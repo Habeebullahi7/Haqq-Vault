@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body { font-family: Inter, sans-serif; background: #FFFFFF; color: #0A1931; }
+.card { @apply bg-white rounded-2xl shadow-[0_4px_24px_rgba(10,25,49,0.06)] border border-gray-100; }
+.btn-navy { @apply bg-[#0A1931] text-white rounded-xl px-6 py-3.5 font-medium hover:bg-[#122A5A] transition relative overflow-hidden; }
+.btn-gold { @apply bg-[#D4AF37] text-[#0A1931] rounded-xl px-6 py-3.5 font-semibold hover:opacity-90 transition; }
+.dot-grid { background-image: radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px); background-size: 24px 24px; }
