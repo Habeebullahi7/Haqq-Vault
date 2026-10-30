@@ -1,11 +1,8 @@
 'use client'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-
-if (!supabaseUrl) {
-  console.warn('Missing NEXT_PUBLIC_SUPABASE_URL - check Vercel Env Vars')
-}
+// Use placeholder for build time so Vercel no go crash
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key-for-build'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
