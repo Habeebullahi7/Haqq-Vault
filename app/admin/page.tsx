@@ -1,43 +1,50 @@
-'use client'
-import { useEffect } from "react";
+"use client";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 const ADMIN_EMAIL = "Liasuhabeeb7@gmail.com"; 
 
 export default function AdminPage() {
   const router = useRouter();
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ total: 0, tickets: 0, donations: 0 });
 
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || user.email !== ADMIN_EMAIL) {
-        router.push("/"); 
+        router.push("/"); // not admin? go back to welcome
+        return;
       }
+      // If admin, load stats
+      const { count } = await supabase.from("debts").select("*", { count: "exact", head: true });
+      setStats({ total: count || 0, tickets: 0, donations: 0 });
+      setLoading(false);
     })();
-  }, []);
-  
-  // ... keep your existing admin code below here
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-export default function Admin(){
-  const [tickets,setTickets]=useState<any[]>([]); const [vaults,setVaults]=useState<any[]>([]); const [donations,setDonations]=useState<any[]>([])
-  useEffect(()=>{ (async()=>{
-    const {data: t} = await supabase.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(20)
-    const {data: v} = await supabase.from('vaults').select('id, type, status, created_at').order('created_at',{ascending:false}).limit(20)
-    const {data: d} = await supabase.from('donations').select('*').order('created_at',{ascending:false}).limit(20)
-    if(t) setTickets(t); if(v) setVaults(v); if(d) setDonations(d)
-  })() },[])
+  }, [router]);
+
+  if (loading) return <div className="min-h-screen bg-[#0f172a] text-white p-8">Checking admin...</div>;
+
   return (
-    <div className="space-y-6">
-      <div className="bg-[#0A1931] rounded-[24px] p-6 text-white"><h1 className="text-2xl font-bold">Admin - HAQQ Control</h1><p className="text-white/60 text-sm mt-2">You see counts only. You CANNOT read vault content because e dey encrypted.</p></div>
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="card p-5"><p className="text-sm text-gray-500">Total Vault Entries</p><p className="text-2xl font-bold">{vaults.length}</p></div>
-        <div className="card p-5"><p className="text-sm text-gray-500">Support Tickets</p><p className="text-2xl font-bold">{tickets.length}</p></div>
-        <div className="card p-5"><p className="text-sm text-gray-500">Total Donations Raised</p><p className="text-2xl font-bold">₦{donations.reduce((s,a)=>s+a.amount,0).toLocaleString()}</p></div>
+    <div className="min-h-screen bg-[#f6f7f9] p-6">
+      <div className="max-w-5xl mx-auto">
+        <div className="bg-[#0f172a] text-white rounded-2xl p-6 mb-6">
+          <h1 className="text-xl font-bold">Admin - HAQQ Control</h1>
+          <p className="text-sm text-gray-400 mt-1">You CANNOT read vault content because it is user-isolated. This is counts only.</p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white p-5 rounded-2xl"><p className="text-xs text-gray-500">Total Vault Entries</p><p className="text-2xl font-bold">{stats.total}</p></div>
+          <div className="bg-white p-5 rounded-2xl"><p className="text-xs text-gray-500">Support Tickets</p><p className="text-2xl font-bold">{stats.tickets}</p></div>
+          <div className="bg-white p-5 rounded-2xl"><p className="text-xs text-gray-500">Total Donations Raised</p><p className="text-2xl font-bold">N0</p></div>
+        </div>
       </div>
-      <div className="card p-6"><h3 className="font-bold mb-3">Recent Support</h3>{tickets.map(t=><div key={t.id} className="border-b py-3 text-sm"><b>{t.name}</b> - {t.email}<br/>{t.message}</div>)}</div>
     </div>
-  )
+  );
 }
