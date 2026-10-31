@@ -6,7 +6,6 @@ export default function WelcomePage() {
 
   return (
     <div className="min-h-screen bg-[#0A1931] text-white overflow-x-hidden">
-      {/* Glows */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-[#D4AF37]/15 rounded-full blur-[120px] animate-pulse"></div>
         <div className="absolute top-[40%] -right-40 w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[120px] animate-pulse delay-1000"></div>
@@ -21,8 +20,8 @@ export default function WelcomePage() {
         <div className="hidden md:flex items-center gap-8 text-sm text-gray-300">
           <a href="#how" className="hover:text-white">How it Works</a>
           <a href="#support" className="hover:text-white">Support</a>
-          <a href="/vault" className="hover:text-white">My Vault</a>
-          <a href="/vault" className="bg-[#D4AF37] text-[#0A1931] px-6 py-2.5 rounded-full font-bold hover:scale-105 transition-transform">Open Vault</a>
+          <a href="/login" className="hover:text-white">My Vault</a>
+          <a href="/login" className="bg-[#D4AF37] text-[#0A1931] px-6 py-2.5 rounded-full font-bold hover:scale-105 transition-transform">Open Vault</a>
         </div>
         <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden">
           <div className="space-y-1.5"><div className="w-6 h-0.5 bg-white"></div><div className="w-6 h-0.5 bg-white"></div><div className="w-6 h-0.5 bg-[#D4AF37]"></div></div>
@@ -30,30 +29,30 @@ export default function WelcomePage() {
       </nav>
 
       {menuOpen && (
-        <div className="relative z-20 md:hidden bg-[#0A1931] border-y border-[#D4AF37]/10 px-6 py-6 space-y-4 animate-[fadeDown_0.3s]">
+        <div className="relative z-20 md:hidden bg-[#0A1931] border-y border-[#D4AF37]/10 px-6 py-6 space-y-4">
           <a href="#how" onClick={()=>setMenuOpen(false)} className="block py-2 text-gray-300">How it Works</a>
           <a href="#support" onClick={()=>setMenuOpen(false)} className="block py-2 text-gray-300">Support</a>
-          <a href="/vault" onClick={()=>setMenuOpen(false)} className="block mt-4 bg-[#D4AF37] text-[#0A1931] text-center py-3.5 rounded-xl font-bold">Open Vault 🔒</a>
+          <a href="/login" onClick={()=>setMenuOpen(false)} className="block mt-4 bg-[#D4AF37] text-[#0A1931] text-center py-3.5 rounded-xl font-bold">Open Vault 🔒</a>
         </div>
       )}
 
       {/* HERO */}
       <section className="relative z-10 max-w-6xl mx-auto px-6 pt-12 pb-20 md:pt-20 md:pb-28 text-center">
-        <div className="inline-flex items-center gap-2 bg-white/5 border border-[#D4AF37]/30 rounded-full px-4 py-1.5 text-[11px] tracking-widest text-[#D4AF37] animate-[fadeUp_0.6s]">
+        <div className="inline-flex items-center gap-2 bg-white/5 border border-[#D4AF37]/30 rounded-full px-4 py-1.5 text-[11px] tracking-widest text-[#D4AF37]">
           <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> QURAN 2:282 • BUILT FOR AMANAH
         </div>
-        <h1 className="mt-8 text-5xl md:text-7xl font-extrabold leading-[0.9] tracking-tight animate-[fadeUp_0.7s_0.1s_both]">
-          Never Forget <br /> <span className="text-[#D4AF37]">A Haqq.</span> <span className="inline-block animate-[float_3s_infinite]">🔒</span>
+        <h1 className="mt-8 text-5xl md:text-7xl font-extrabold leading-[0.9] tracking-tight">
+          Never Forget <br /> <span className="text-[#D4AF37]">A Haqq.</span> 🔒
         </h1>
-        <p className="mt-6 text-[#E8EDF5]/70 max-w-xl mx-auto leading-relaxed text-[15px] md:text-[16px] animate-[fadeUp_0.7s_0.2s_both]">
+        <p className="mt-6 text-[#E8EDF5]/70 max-w-xl mx-auto leading-relaxed text-[15px] md:text-[16px]">
           Your private Islamic debt vault. Record who you owe, who owes you, set reminders, and keep your trust with Allah. Secure, encrypted, for His sake.
         </p>
-        <div className="mt-9 flex flex-col sm:flex-row justify-center gap-3 animate-[fadeUp_0.7s_0.3s_both]">
-          <a href="/vault" className="px-8 py-4 bg-[#D4AF37] text-[#0A1931] rounded-full font-bold text-[15px] shadow-lg shadow-[#D4AF37]/20 hover:scale-105 transition-transform">Enter Vault — It's Free</a>
+        <div className="mt-9 flex flex-col sm:flex-row justify-center gap-3">
+          <a href="/login" className="px-8 py-4 bg-[#D4AF37] text-[#0A1931] rounded-full font-bold text-[15px] shadow-lg shadow-[#D4AF37]/20 hover:scale-105 transition-transform">Enter Vault — It's Free</a>
           <a href="#how" className="px-8 py-4 bg-white/10 backdrop-blur border border-white/10 rounded-full font-semibold text-[15px] hover:bg-white/20 transition-colors">How it Works</a>
         </div>
 
-        <div className="mt-16 md:mt-20 mx-auto max-w-sm bg-[#112240] border border-[#D4AF37]/20 text-white rounded-[24px] p-4 shadow-2xl shadow-black/50 animate-[fadeUp_0.8s_0.5s_both] rotate-1 hover:rotate-0 transition-transform">
+        <div className="mt-16 md:mt-20 mx-auto max-w-sm bg-[#112240] border border-[#D4AF37]/20 text-white rounded-[24px] p-4 shadow-2xl shadow-black/50">
           <div className="flex justify-between items-center text-[11px] tracking-widest opacity-60"><span>VAULT PREVIEW</span><span className="text-green-400">● LIVE</span></div>
           <div className="mt-4 space-y-3">
             <div className="flex justify-between bg-[#0A1931] p-3 rounded-xl border border-white/5"><span className="text-sm font-bold">Musa</span><span className="text-sm font-bold text-red-400">₦50,000 • I Owe</span></div>
@@ -62,7 +61,6 @@ export default function WelcomePage() {
         </div>
       </section>
 
-      {/* HOW IT WORKS - NOW NAVY + GOLD */}
       <section id="how" className="relative z-10 bg-[#0f2040] rounded-t-[32px] md:rounded-t-[48px] px-6 py-16 md:py-24 border-t border-[#D4AF37]/10">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-extrabold text-center text-white">Amanah, Made <span className="text-[#D4AF37]">Simple</span></h2>
@@ -83,14 +81,8 @@ export default function WelcomePage() {
       </section>
 
       <footer id="support" className="relative z-10 bg-[#0A1931] border-t border-[#D4AF37]/10 text-center py-8 text-xs text-[#E8EDF5]/50">
-        Built for Amanah • Quran 2:282 • <a href="/vault" className="text-[#D4AF37] font-bold underline">Open Vault</a>
+        Built for Amanah • Quran 2:282 • <a href="/login" className="text-[#D4AF37] font-bold underline">Open Vault</a>
       </footer>
-
-      <style>{`
-        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeDown{from{opacity:0;transform:translateY(-15px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-      `}</style>
     </div>
   )
-            }
+}
