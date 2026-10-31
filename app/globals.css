@@ -1,8 +1,31 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-body { font-family: Inter, sans-serif; background: #FFFFFF; color: #0A1931; }
-.card { @apply bg-white rounded-2xl shadow-[0_4px_24px_rgba(10,25,49,0.06)] border border-gray-100; }
-.btn-navy { @apply bg-[#0A1931] text-white rounded-xl px-6 py-3.5 font-medium hover:bg-[#122A5A] transition relative overflow-hidden; }
-.btn-gold { @apply bg-[#D4AF37] text-[#0A1931] rounded-xl px-6 py-3.5 font-semibold hover:opacity-90 transition; }
-.dot-grid { background-image: radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px); background-size: 24px 24px; }
+
+body { 
+  font-family: Inter, sans-serif; 
+  background: #0A1931; 
+  color: #E8EDF5; 
+}
+
+.card { 
+  @apply bg-[#112240] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] border border-[#D4AF37]/15; 
+}
+
+.btn-navy { 
+  @apply bg-[#0A1931] text-white rounded-xl px-6 py-3.5 font-medium hover:bg-[#122A5A] transition relative overflow-hidden border border-[#D4AF37]/20; 
+}
+
+.btn-gold { 
+  @apply bg-[#D4AF37] text-[#0A1931] rounded-xl px-6 py-3.5 font-semibold hover:bg-[#C5A030] transition shadow-[0_4px_12px_rgba(212,175,55,0.25)]; 
+}
+
+.dot-grid { 
+  background-image: radial-gradient(rgba(212,175,55,0.12) 1px, transparent 1px); 
+  background-size: 24px 24px; 
+}
+
+/* Make inputs dark too */
+input, textarea, select {
+  @apply bg-[#0f2040] border-[#1e3a5f] text-white placeholder:text-gray-400;
+}
