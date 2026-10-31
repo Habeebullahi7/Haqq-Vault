@@ -1,4 +1,24 @@
 'use client'
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
+
+const ADMIN_EMAIL = "Liasuhabeeb7@gmail.com"; 
+
+export default function AdminPage() {
+  const router = useRouter();
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.email !== ADMIN_EMAIL) {
+        router.push("/"); 
+      }
+    })();
+  }, []);
+  
+  // ... keep your existing admin code below here
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 export default function Admin(){
