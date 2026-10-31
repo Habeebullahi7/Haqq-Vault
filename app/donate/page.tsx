@@ -2,53 +2,49 @@
 import { useState } from "react"
 
 export default function DonatePage(){
-  const [amount, setAmount] = useState(2000)
-  const [email, setEmail] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const acct = "0253559865"
+  const name = "Liasu Habeeblah Olalekan"
+  const bank = "WEMA BANK"
 
-  const handleDonate = async () => {
-    if(!email){ alert("Add your email first"); return; }
-    setLoading(true)
-    try{
-      const res = await fetch("/api/donate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, email, name: "HAQQ Supporter" })
-      })
-      const data = await res.json()
-      console.log(data)
-      const link = data?.data?.link || data?.data?.checkout_url
-      if(link){
-        window.location.href = link
-      } else {
-        alert("Error: " + JSON.stringify(data))
-      }
-    } catch(e){
-      alert("Failed, check Vercel env FLW_V4_SECRET_KEY")
-    } finally { setLoading(false) }
+  const copy = () => {
+    navigator.clipboard.writeText(acct)
+    setCopied(true)
+    setTimeout(()=>setCopied(false), 2000)
   }
 
-  return (
-    <div className="min-h-[80vh] flex items-center justify-center px-6 py-10">
-      <div className="w-full max-w-md bg-[#112240] border border-[#D4AF37]/20 rounded-[28px] p-7 shadow-2xl">
-        <div className="w-12 h-12 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37] text-xl">💛</div>
-        <h1 className="mt-4 text-2xl font-extrabold text-white">Support <span className="text-[#D4AF37]">HAQQ</span></h1>
-        <p className="mt-2 text-sm text-[#E8EDF5]/60">Your Sadaqah keeps this amanah tool free. Quran 2:282</p>
+  return(
+    <div style={{maxWidth: 500, margin: "40px auto", padding: 20, fontFamily: "sans-serif"}}>
+      <h1 style={{fontSize: 28, fontWeight: "bold"}}>Support HAQQ — Sadaqah Jariyah</h1>
+      <p style={{marginTop: 10, color: "#666"}}>Quran 2:282 — Preserving Amanah</p>
 
-        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" className="w-full mt-6 bg-[#0A1931] border border-white/10 rounded-xl p-3.5 text-white text-sm focus:border-[#D4AF37]/50 outline-none"/>
-
-        <div className="grid grid-cols-3 gap-2 mt-4">
-          {[1000,2000,5000,10000,20000,50000].map(v=>(
-            <button key={v} onClick={()=>setAmount(v)} className={`py-3 rounded-xl text-sm font-bold border transition ${amount===v ? 'bg-[#D4AF37] text-[#0A1931] border-[#D4AF37]' : 'bg-[#0A1931] text-white/80 border-white/10 hover:border-[#D4AF37]/30'}`}>₦{v.toLocaleString()}</button>
-          ))}
-        </div>
-
-        <button onClick={handleDonate} disabled={loading} className="w-full mt-6 bg-[#D4AF37] text-[#0A1931] font-extrabold py-4 rounded-xl hover:scale-[1.02] transition disabled:opacity-50">
-          {loading ? "Opening Flutterwave..." : `Donate ₦${amount.toLocaleString()}`}
-        </button>
+      <div style={{marginTop: 30, border: "2px solid #000", borderRadius: 16, padding: 24, background: "#fff"}}>
+        <p style={{fontSize: 14, color: "#888"}}>BANK NAME</p>
+        <p style={{fontWeight: "bold", fontSize: 18}}>{bank}</p>
         
-        <p className="text-center text-[11px] text-white/30 mt-4 tracking-widest">SECURED BY FLUTTERWAVE V4 • 100% AMANAH</p>
+        <p style={{fontSize: 14, color: "#888", marginTop: 15}}>ACCOUNT NAME</p>
+        <p style={{fontWeight: "bold", fontSize: 18}}>{name}</p>
+
+        <p style={{fontSize: 14, color: "#888", marginTop: 15}}>ACCOUNT NUMBER</p>
+        <p style={{fontWeight: "bold", fontSize: 28, letterSpacing: 2}}>{acct}</p>
+        
+        <button onClick={copy} style={{marginTop: 20, padding: "14px 20px", background: "black", color: "white", borderRadius: 10, width: "100%", fontSize: 16, fontWeight: "bold", cursor: "pointer"}}>
+          {copied ? "Copied! ✅" : "Copy Account Number"}
+        </button>
       </div>
+
+      <div style={{marginTop: 20, padding: 18, background: "#e8f5e9", borderRadius: 12, border: "1px solid #c8e6c9"}}>
+        <p style={{fontWeight: "bold"}}>After Transfer:</p>
+        <p style={{marginTop: 8}}>1. Screenshot your receipt</p>
+        <p>2. Send proof to WhatsApp</p>
+        <a href="https://wa.me/2347041935986?text=Salam!%20I%20just%20supported%20HAQQ%20with%20Sadaqah.%20Here%20is%20my%20receipt" 
+           target="_blank"
+           style={{display: "block", marginTop: 12, padding: "12px", background: "#25D366", color: "white", textAlign: "center", borderRadius: 8, fontWeight: "bold", textDecoration: "none"}}>
+          📱 Send Proof on WhatsApp
+        </a>
+      </div>
+
+      <p style={{marginTop: 20, fontSize: 12, color: "#999", textAlign: "center"}}>100% Amanah • No charges • Direct Sadaqah Jariyah for you</p>
     </div>
   )
 }
