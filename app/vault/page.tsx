@@ -21,7 +21,7 @@ const hadiths = [
 export default function VaultPage() {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [showAdd, setShowAdd] = useState(false);
-  const [newDebt, setNewDebt] = useState({ person: '', amount: '', type: 'i_owe', due_date: '', note: '' });
+  const [newDebt, setNewDebt] = useState({ person: '', amount: '', type: 'i_owe', due_date: '', note: '', customNote: '' });
   const [hadith, setHadith] = useState(hadiths[0]);
 
   useEffect(() => {
@@ -46,9 +46,22 @@ export default function VaultPage() {
 
   async function addDebt() {
     if (!newDebt.person || !newDebt.note) { alert("Fill person and type of Haqq"); return; }
-    await supabase.from('debts').insert([{ ...newDebt, amount: Number(newDebt.amount) || 0, status: 'pending' }]);
+    if (newDebt.note === "Other - Custom" && !newDebt.customNote) { alert("Please type your custom Haqq in the box"); return; }
+    
+    const finalNote = newDebt.note === "Other - Custom" 
+      ? newDebt.customNote 
+      : newDebt.note + (newDebt.customNote ? ` - ${newDebt.customNote}` : '');
+
+    await supabase.from('debts').insert([{ 
+      person: newDebt.person,
+      amount: Number(newDebt.amount) || 0, 
+      type: newDebt.type,
+      due_date: newDebt.due_date,
+      note: finalNote,
+      status: 'pending' 
+    }]);
     setShowAdd(false);
-    setNewDebt({ person: '', amount: '', type: 'i_owe', due_date: '', note: '' });
+    setNewDebt({ person: '', amount: '', type: 'i_owe', due_date: '', note: '', customNote: '' });
     fetchDebts();
   }
 
@@ -96,7 +109,8 @@ export default function VaultPage() {
               {debts.map((d) => (
                 <div key={d.id} className="bg-white text-[#0f172a] rounded-2xl p-4 flex justify-between items-center">
                   <div className="flex-1 pr-3">
-                    <p className="font-bold text-sm">{d.person} <span className="text-[9px] bg-gray-100 px-2 py-0.5 rounded-full ml-1">{d.note}</span></p>
+                    <p className="font-bold text-sm">{d.person}</p>
+                    <p className="text-[11px] bg-gray-100 px-2 py-1 rounded-full mt-1 inline-block max-w-full truncate">{d.note}</p>
                     <p className="text-xs text-gray-500 mt-1">{d.type === 'i_owe' ? 'You owe' : 'Owes you'} • Due {d.due_date || '—'}</p>
                   </div>
                   <div className="text-right">
@@ -124,9 +138,9 @@ export default function VaultPage() {
           <div className="bg-white text-[#0f172a] w-full md:max-w-md rounded-t-[28px] md:rounded-[24px] p-6 max-h-[92vh] overflow-y-auto">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 md:hidden"></div>
             <h3 className="font-bold text-lg">Record New Haqq</h3>
-            <p className="text-xs text-gray-500 mt-1">See options to remember forgotten Haqq</p>
+            <p className="text-xs text-gray-500 mt-1">Tap to remember forgotten Haqq, or type your own</p>
             
-            <div className="mt-5 space-y-3">
+            <div className="mt-5 space-y-4">
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={()=>setNewDebt({...newDebt, type: 'i_owe'})} className={`p-3 rounded-xl border text-sm font-bold ${newDebt.type==='i_owe' ? 'bg-[#0f172a] text-white' : 'bg-gray-50'}`}>I Owe / I Wronged</button>
                 <button onClick={()=>setNewDebt({...newDebt, type: 'they_owe'})} className={`p-3 rounded-xl border text-sm font-bold ${newDebt.type==='they_owe' ? 'bg-[#D4AF37] text-[#0f172a]' : 'bg-gray-50'}`}>They Owe Me</button>
@@ -141,26 +155,25 @@ export default function VaultPage() {
                     <option value="I Owe - Borrowed Money">💰 Borrowed Money & Never Paid</option>
                     <option value="Cheated in Business / Trade">⚖️ Cheated in Business / Trade</option>
                     <option value="Took Extra Change & Didn't Return">💳 Took Extra Change & Kept It</option>
-                    <option value="Did Not Pay Worker Salary on Time">👷‍♂️ Delayed Worker's Salary</option>
+                    <option value="Did Not Pay Worker Salary">👷‍♂️ Delayed Worker's Salary</option>
                     <option value="Withheld Inheritance (Mirath)">🏠 Withheld Inheritance</option>
                     <option value="Riba - Interest I Collected">💸 Riba I Took</option>
-                    <option value="Used Someone's Item Without Permission">📱 Used Property Without Permission</option>
+                    <option value="Used Item Without Permission">📱 Used Property Without Permission</option>
                     <option value="Damaged Something & Didn't Fix">🔧 Damaged & Didn't Replace</option>
                   </optgroup>
 
                   <optgroup label="🗣️ TONGUE / HEART - Most Forgotten">
                     <option value="Backbiting (Ghibah)">🗣️ Backbiting (Ghibah) - Talked Behind</option>
-                    <option value="Slander / False Accusation (Buhtan)">🤥 Slander / Lied About Someone</option>
-                    <option value="Namimah - Carried Gossip">🔥 Namimah - Caused Fight Between People</option>
+                    <option value="Slander / False Accusation">🤥 Slander / Lied About Someone</option>
+                    <option value="Namimah - Carried Gossip">🔥 Namimah - Caused Fight</option>
                     <option value="Insulted / Mocked Someone">😔 Insulted, Mocked, Cursed</option>
                     <option value="Broke Promise / Betrayed Trust">🤝 Broke Promise / Betrayed Amanah</option>
                     <option value="Envy / Jealousy Led to Harm">👁️ Envy That Caused Harm</option>
-                    <option value="Arrogance / Looked Down on Someone">😤 Arrogance / Belittled Someone</option>
                   </optgroup>
 
                   <optgroup label="🤲 PHYSICAL / RIGHTS">
-                    <option value="Hit / Hurt Someone Physically">✋ Hit / Beat / Hurt Someone</option>
-                    <option value="Oppressed Someone With Power">👑 Oppressed With Power/Position</option>
+                    <option value="Hit / Hurt Someone Physically">✋ Hit / Hurt Someone</option>
+                    <option value="Oppressed Someone With Power">👑 Oppressed With Power</option>
                     <option value="Denied Someone Their Right / Time">⏰ Wasted Time / Denied Right</option>
                     <option value="Haram Look / Harassment">👀 Wrong Look / Harassment</option>
                   </optgroup>
@@ -172,30 +185,36 @@ export default function VaultPage() {
                     <option value="Forgot If I Paid - Record To Be Safe">🤷 Forgot If I Paid - Record To Be Safe</option>
                   </optgroup>
 
-                  <optgroup label="📜 IBADAH">
+                  <optgroup label="📜 OTHER">
                     <option value="They Owe Me - I Forgive">💵 They Owe Me (Record / Forgive)</option>
-                    <option value="Kaffarah - Oath / Fast">🤲 Kaffarah - Oath / Fast</option>
-                    <option value="Wasiyyah - My Will">📜 Wasiyyah - My Will</option>
+                    <option value="Kaffarah - Oath / Fast">🤲 Kaffarah</option>
+                    <option value="Wasiyyah - My Will">📜 Wasiyyah</option>
+                    <option value="Other - Custom">✍️ Other - My Case Not Listed (Type Below)</option>
                   </optgroup>
                 </select>
               </div>
 
-              {newDebt.note && (
-                <div className="p-3 bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-xl">
-                  <p className="text-[11px] font-bold text-[#0f172a]">What Islam says:</p>
-                  <p className="text-[11px] text-[#0f172a]/70 mt-1 leading-snug">
-                    {newDebt.note.includes("Ghibah") && "Praise them where you backbit them, make dua for them, and seek forgiveness if you can."}
-                    {newDebt.note.includes("Cheated") && "Pay same amount back. If can't find them, give Sadaqah on their behalf. Allah will settle it."}
-                    {newDebt.note.includes("Can't Find") && "Give amount as Sadaqah for them. Allah will deliver reward to them on Qiyamah."}
-                    {newDebt.note.includes("Borrowed") && "Return money + small gift for delay."}
-                    {newDebt.note.includes("Hit") && "Ask forgiveness. If not possible, give charity and dua."}
-                    {!["Ghibah","Cheated","Can't Find","Borrowed","Hit"].some(k=>newDebt.note.includes(k)) && "Record with sincere intention. Allah loves those who clear Haqq."}
-                  </p>
-                </div>
-              )}
+              {/* FREE TYPING SPACE */}
+              <div className={`p-3 rounded-xl border-2 transition-all ${newDebt.note === "Other - Custom" ? 'border-[#D4AF37] bg-yellow-50/70' : 'border-dashed border-gray-200 bg-gray-50/50'}`}>
+                <label className="text-[11px] font-bold tracking-widest opacity-70">
+                  {newDebt.note === "Other - Custom" ? "✍️ TYPE YOUR OWN HAQQ HERE (Required)" : "✍️ Describe Your Case More (Optional but Powerful)"}
+                </label>
+                <textarea 
+                  value={newDebt.customNote} 
+                  onChange={e=>setNewDebt({...newDebt, customNote: e.target.value})} 
+                  placeholder={
+                    newDebt.note === "Other - Custom" 
+                    ? "Example: I spoiled my friend's relationship, or I stole pen in office 2019, or I cheated during exam and copied someone's work, or I used company data for my business..."
+                    : "Add more details: Example - How it happened, where, when? This helps you remember on Qiyamah and fix it properly. Leave empty if not needed."
+                  }
+                  className="w-full mt-2 p-3 bg-white rounded-xl border outline-none text-sm min-h-[90px] focus:border-[#0f172a]"
+                  rows={3}
+                />
+                <p className="text-[10px] text-gray-500 mt-1">Allah loves honest confession. Write it for His sake — it stays private in your vault.</p>
+              </div>
 
-              <input value={newDebt.person} onChange={e=>setNewDebt({...newDebt, person: e.target.value})} placeholder="Person name (e.g. Musa, Classmate 2015)" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none" />
-              <input value={newDebt.amount} onChange={e=>setNewDebt({...newDebt, amount: e.target.value})} type="number" placeholder="Amount ₦ (put 0 if not money)" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none" />
+              <input value={newDebt.person} onChange={e=>setNewDebt({...newDebt, person: e.target.value})} placeholder="Person name (e.g. Musa, Classmate 2015, Neighbour)" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none" />
+              <input value={newDebt.amount} onChange={e=>setNewDebt({...newDebt, amount: e.target.value})} type="number" placeholder="Amount ₦ (put 0 if not money - e.g. Ghibah)" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none" />
               <input value={newDebt.due_date} onChange={e=>setNewDebt({...newDebt, due_date: e.target.value})} type="date" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none" />
               
               <div className="flex gap-3 pt-2">
@@ -208,4 +227,4 @@ export default function VaultPage() {
       )}
     </div>
   )
-   }
+      }
