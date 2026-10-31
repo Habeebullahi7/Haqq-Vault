@@ -1,26 +1,42 @@
 import { NextResponse } from "next/server"
 
 export async function POST(req: Request){
-  const { amount, email, name } = await req.json()
-  
-  const res = await fetch("https://api.flutterwave.com/v4/transactions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.FLW_V4_SECRET_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      amount: amount,
-      currency: "NGN",
-      tx_ref: `haqq-${Date.now()}`,
-      email: email,
-      full_name: name || "HAQQ Supporter",
-      redirect_url: "https://haqq-gray.vercel.app/donate/success",
-      meta: { source: "HAQQ Sadaqah" },
-      customization: { title: "Support HAQQ", description: "Keep Amanah alive" }
-    })
-  })
+  try {
+    const { amount, email, name } = await req.json()
+    
+    if(!process.env.FLW_V4_SECRET_KEY){
+      return NextResponse.json({ error: "FLW_V4_SECRET_KEY not found in Vercel env" }, { status: 500 })
+    }
 
-  const data = await res.json()
-  return NextResponse.json(data)
+    // Flutterwave V3 endpoint still works for V4 keys - this is the stable one
+    const res = await fetch("https://api.flutterwave.com/v3/payments", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.FLW_V4_SECRET_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        tx_ref: `haqq-${Date.now()}`,
+        amount: amount,
+        currency: "NGN",
+        redirect_url: "https://haqq-gray.vercel.app/donate/success",
+        customer: {
+          email: email,
+          name: name || "HAQQ Supporter"
+        },
+        customizations: {
+          title: "Support HAQQ",
+          description: "Sadaqah for Amanah - Quran 2:282",
+          logo: "https://haqq-gray.vercel.app/icon.png"
+        }
+      })
+    })
+
+    const data = await res.json()
+    console.log("FLW Response:", data)
+    return NextResponse.json(data)
+
+  } catch(err:any){
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
 }
