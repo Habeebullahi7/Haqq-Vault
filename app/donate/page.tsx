@@ -1,37 +1,53 @@
-'use client'
-export const dynamic = 'force-dynamic'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+"use client"
+import { useState } from "react"
 
-const projects = [
-  { id: 'masjid_roof', title: 'Masjid Roof Repair', goal: 2000000, desc: 'Help fix leaking roof before Ramadan' },
-  { id: 'water_well', title: 'Water Well in Borno', goal: 500000, desc: 'Provide clean water' },
-]
+export default function DonatePage(){
+  const [amount, setAmount] = useState(2000)
+  const [email, setEmail] = useState("")
+  const [loading, setLoading] = useState(false)
 
-export default function Donate(){
-  const [donations, setDonations] = useState<any[]>([])
-  useEffect(()=>{ supabase.from('donations').select('*').then(({data})=>{ if(data) setDonations(data) }) },[])
-
-  const getRaised = (pid: string) => donations.filter(d=>d.project===pid).reduce((s,a)=>s+a.amount,0)
+  const handleDonate = async () => {
+    if(!email){ alert("Add your email first"); return; }
+    setLoading(true)
+    try{
+      const res = await fetch("/api/donate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, email, name: "HAQQ Supporter" })
+      })
+      const data = await res.json()
+      console.log(data)
+      const link = data?.data?.link || data?.data?.checkout_url
+      if(link){
+        window.location.href = link
+      } else {
+        alert("Error: " + JSON.stringify(data))
+      }
+    } catch(e){
+      alert("Failed, check Vercel env FLW_V4_SECRET_KEY")
+    } finally { setLoading(false) }
+  }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Sadaqah Projects</h1>
-      <p className="text-sm text-gray-500">No fake progress — bar dey at 0% because no money don enter yet. When you donate, e go move.</p>
-      <div className="grid md:grid-cols-2 gap-6">
-        {projects.map(p=>{
-          const raised = getRaised(p.id)
-          const percent = p.goal > 0 ? Math.min(100, Math.round((raised / p.goal)*100)) : 0
-          return (
-            <div key={p.id} className="card p-6">
-              <h3 className="font-bold">{p.title}</h3>
-              <p className="text-sm text-gray-600 mt-1">{p.desc}</p>
-              <div className="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-[#0A1931] transition-all duration-700" style={{width: `${percent}%`}}/></div>
-              <div className="flex justify-between text-xs mt-2"><span>₦{raised.toLocaleString()} raised</span><span>{percent}%</span></div>
-              <button onClick={()=>alert('Connect Paystack / Flutterwave here - only when you ready')} className="mt-4 btn-navy w-full">Donate Now</button>
-            </div>
-          )
-        })}
+    <div className="min-h-[80vh] flex items-center justify-center px-6 py-10">
+      <div className="w-full max-w-md bg-[#112240] border border-[#D4AF37]/20 rounded-[28px] p-7 shadow-2xl">
+        <div className="w-12 h-12 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37] text-xl">💛</div>
+        <h1 className="mt-4 text-2xl font-extrabold text-white">Support <span className="text-[#D4AF37]">HAQQ</span></h1>
+        <p className="mt-2 text-sm text-[#E8EDF5]/60">Your Sadaqah keeps this amanah tool free. Quran 2:282</p>
+
+        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" className="w-full mt-6 bg-[#0A1931] border border-white/10 rounded-xl p-3.5 text-white text-sm focus:border-[#D4AF37]/50 outline-none"/>
+
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          {[1000,2000,5000,10000,20000,50000].map(v=>(
+            <button key={v} onClick={()=>setAmount(v)} className={`py-3 rounded-xl text-sm font-bold border transition ${amount===v ? 'bg-[#D4AF37] text-[#0A1931] border-[#D4AF37]' : 'bg-[#0A1931] text-white/80 border-white/10 hover:border-[#D4AF37]/30'}`}>₦{v.toLocaleString()}</button>
+          ))}
+        </div>
+
+        <button onClick={handleDonate} disabled={loading} className="w-full mt-6 bg-[#D4AF37] text-[#0A1931] font-extrabold py-4 rounded-xl hover:scale-[1.02] transition disabled:opacity-50">
+          {loading ? "Opening Flutterwave..." : `Donate ₦${amount.toLocaleString()}`}
+        </button>
+        
+        <p className="text-center text-[11px] text-white/30 mt-4 tracking-widest">SECURED BY FLUTTERWAVE V4 • 100% AMANAH</p>
       </div>
     </div>
   )
