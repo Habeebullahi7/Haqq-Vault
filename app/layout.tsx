@@ -2,11 +2,12 @@ import './globals.css'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import TopAppBar from '@/components/TopAppBar'
+import RegisterSW from '@/components/RegisterSW'
 
 export const metadata = { 
   title: 'HAQQ - Rights Clearing Vault', 
   description: 'Clear your rights before you meet your Lord', 
-  manifest: '/manifest.json', 
+  manifest: '/manifest.webmanifest', 
   themeColor: '#0A1931' 
 }
 
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }){
           {children}
         </main>
         <BottomNav/>
+        <RegisterSW/>
         <style>{`
           ::-webkit-scrollbar { width: 8px; }
           ::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 4px; }
