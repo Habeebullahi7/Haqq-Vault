@@ -2,6 +2,9 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import BottomNav from '../../components/BottomNav'
 
+const IMAM_WHATSAPP = '2348161866717' // <-- Change to your real Imam number
+const HAQQ_ADMIN_WHATSAPP = '2347041935986' // <-- Change to HAQQ Admin number
+
 const WORD_NUMBERS: any = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100, thousand: 1000, million: 1000000, billion: 1000000000 }
 function parseWordNumber(text: string): number {
   const words = text.toLowerCase().replace(/-/g, ' ').split(/\s+/)
@@ -23,48 +26,14 @@ function parseSmartAmount(v: string): number {
   if (!s) return 0
   if (/[a-z]/.test(s)) {
     const shortMatch = s.match(/^([\d,.]+)\s*([kmb])\b/)
-    if (shortMatch) {
-      const n = parseFloat(shortMatch[1].replace(/,/g, ''))
-      const mult = shortMatch[2] === 'k' ? 1000 : shortMatch[2] === 'm' ? 1000000 : 1000000000
-      return Math.round(n * mult)
-    }
+    if (shortMatch) { const n = parseFloat(shortMatch[1].replace(/,/g, '')); const mult = shortMatch[2] === 'k' ? 1000 : shortMatch[2] === 'm' ? 1000000 : 1000000000; return Math.round(n * mult) }
     const longMatch = s.match(/([\d,.]+)\s*(thousand|million|billion)/)
-    if (longMatch) {
-      const n = parseFloat(longMatch[1].replace(/,/g, ''))
-      const mult = longMatch[2] === 'thousand' ? 1000 : longMatch[2] === 'million' ? 1000000 : 1000000000
-      return Math.round(n * mult)
-    }
+    if (longMatch) { const n = parseFloat(longMatch[1].replace(/,/g, '')); const mult = longMatch[2] === 'thousand' ? 1000 : longMatch[2] === 'million' ? 1000000 : 1000000000; return Math.round(n * mult) }
     if (/million|billion|thousand|hundred/.test(s)) {
       let result = 0
-      if (s.includes('billion')) {
-        const before = s.split('billion')[0]
-        result += parseWordNumber(before) * 1000000000
-        const after = s.split('billion')[1] || ''
-        if (after.includes('million')) {
-          result += parseWordNumber(after.split('million')[0]) * 1000000
-          const rest = after.split('million')[1] || ''
-          if (rest.includes('thousand')) result += parseWordNumber(rest.split('thousand')[0]) * 1000
-          else result += parseWordNumber(rest)
-        } else if (after.includes('thousand')) result += parseWordNumber(after.split('thousand')[0]) * 1000
-        else result += parseWordNumber(after)
-        return result
-      }
-      if (s.includes('million')) {
-        const before = s.split('million')[0]
-        result += parseWordNumber(before) * 1000000
-        const after = s.split('million')[1] || ''
-        if (after.includes('thousand')) {
-          result += parseWordNumber(after.split('thousand')[0]) * 1000
-          result += parseWordNumber(after.split('thousand')[1] || '')
-        } else result += parseWordNumber(after)
-        return result
-      }
-      if (s.includes('thousand')) {
-        const before = s.split('thousand')[0]
-        result += parseWordNumber(before) * 1000
-        result += parseWordNumber(s.split('thousand')[1] || '')
-        return result
-      }
+      if (s.includes('billion')) { result += parseWordNumber(s.split('billion')[0]) * 1000000000; const after = s.split('billion')[1] || ''; if (after.includes('million')) { result += parseWordNumber(after.split('million')[0]) * 1000000; const rest = after.split('million')[1] || ''; if (rest.includes('thousand')) result += parseWordNumber(rest.split('thousand')[0]) * 1000; else result += parseWordNumber(rest) } else if (after.includes('thousand')) result += parseWordNumber(after.split('thousand')[0]) * 1000; else result += parseWordNumber(after); return result }
+      if (s.includes('million')) { result += parseWordNumber(s.split('million')[0]) * 1000000; const after = s.split('million')[1] || ''; if (after.includes('thousand')) { result += parseWordNumber(after.split('thousand')[0]) * 1000; result += parseWordNumber(after.split('thousand')[1] || '') } else result += parseWordNumber(after); return result }
+      if (s.includes('thousand')) { result += parseWordNumber(s.split('thousand')[0]) * 1000; result += parseWordNumber(s.split('thousand')[1] || ''); return result }
       return parseWordNumber(s)
     }
     if (/^[a-z\s-]+$/.test(s)) return parseWordNumber(s)
@@ -75,9 +44,6 @@ const formatMoney = (n: number) => '₦' + Math.round(n).toLocaleString()
 const Input = ({ value, onChange, placeholder }: any) => {
   const handleBlur = (e: any) => {
     const parsed = parseSmartAmount(e.target.value)
-    if (parsed > 0 && /[a-z]|,/i.test(e.target.value) === false) {
-      // Only auto-format if it looks like amount field - we check parent via placeholder containing ₦ or e.g.
-    }
     if (parsed > 0 && (String(placeholder || '').includes('e.g.') || String(placeholder || '').includes('₦'))) {
       onChange({ target: { value: parsed.toLocaleString() } })
     }
@@ -92,21 +58,34 @@ const Hint = () => (<p className="text-[11px] text-gray-500 mt-1">You can type 1
 export default function WasiyyahPage() {
   const [step, setStep] = useState(1)
 
-  // VAULT LOCK
-  const [isLocked, setIsLocked] = useState(true)
+  // VAULT LOCK - INITIAL ENTRY
+  const [isLocked, setIsLocked] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [savedPin, setSavedPin] = useState('1234')
   const [showPinSetup, setShowPinSetup] = useState(false)
   const [newPin, setNewPin] = useState('')
+
+  // VAULT STATUS - DRAFT / ACTIVE_LOCKED / EDITING / RELEASED
+  const [vaultStatus, setVaultStatus] = useState<'DRAFT' | 'ACTIVE_LOCKED' | 'EDITING' | 'RELEASED'>('DRAFT')
+  const [showUnlockModal, setShowUnlockModal] = useState(false)
+  const [unlockPin, setUnlockPin] = useState('')
+  const [unlockOtp, setUnlockOtp] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+  const [generatedOtp, setGeneratedOtp] = useState('')
+  const [editReason, setEditReason] = useState('')
+
   useEffect(() => {
     const p = localStorage.getItem('haqq-wasiyyah-pin')
-    if (p) setSavedPin(p)
-    else setIsLocked(false)
+    if (p) { setSavedPin(p); setIsLocked(true) }
+    const status = localStorage.getItem('haqq-wasiyyah-status') as any
+    if (status) setVaultStatus(status)
+    const v = localStorage.getItem('haqq-wasiyyah-versions')
+    if (v) setVersions(JSON.parse(v))
+    const last = localStorage.getItem('haqq-wasiyyah-last-saved')
+    if (last) { setLastSaved(last); const d = new Date(last); d.setMonth(d.getMonth() + 6); setNextReview(d.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })) }
   }, [])
-  const unlock = () => {
-    if (pinInput === savedPin) setIsLocked(false)
-    else alert('Incorrect PIN. Try again.')
-  }
+
+  const unlockVaultEntry = () => { if (pinInput === savedPin) setIsLocked(false); else alert('Incorrect PIN.') }
 
   // STEP 1
   const [cashHome, setCashHome] = useState('')
@@ -119,14 +98,12 @@ export default function WasiyyahPage() {
   const add = (list: any, setList: any) => setList([...list, { name: '', amt: '' }])
   const rem = (list: any, setList: any, i: number) => { if (list.length > 1) setList(list.filter((_: any, idx: number) => idx !== i)) }
   const renderList = (list: any, setList: any, namePh: string, amtPh: string, label: string) => (
-    <div>
-      {list.map((it: any, i: number) => (
-        <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 mt-2 items-center">
-          <Input value={it.name} onChange={(e: any) => upd(list, setList, i, 'name', e.target.value)} placeholder={namePh} />
-          <Input value={it.amt} onChange={(e: any) => upd(list, setList, i, 'amt', e.target.value)} placeholder={amtPh} />
-          {list.length > 1 && <button onClick={() => rem(list, setList, i)} className="text-red-500 font-black px-1 text-lg">×</button>}
-        </div>
-      ))}
+    <div>{list.map((it: any, i: number) => (
+      <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 mt-2 items-center">
+        <Input value={it.name} onChange={(e: any) => upd(list, setList, i, 'name', e.target.value)} placeholder={namePh} />
+        <Input value={it.amt} onChange={(e: any) => upd(list, setList, i, 'amt', e.target.value)} placeholder={amtPh} />
+        {list.length > 1 && <button onClick={() => rem(list, setList, i)} className="text-red-500 font-black px-1 text-lg">×</button>}
+      </div>))}
       <AddBtn onClick={() => add(list, setList)} label={label} />
     </div>
   )
@@ -137,7 +114,7 @@ export default function WasiyyahPage() {
   const [kaffarahAmt, setKaffarahAmt] = useState('')
   const [funeralAmt, setFuneralAmt] = useState('500000')
 
-  // STEP 3 - YOUR GENDER + HEIRS CONTACTS
+  // STEP 3
   const [myGender, setMyGender] = useState<'male' | 'female'>('male')
   const [isMarried, setIsMarried] = useState('yes')
   const [wivesCount, setWivesCount] = useState('1')
@@ -157,7 +134,7 @@ export default function WasiyyahPage() {
   const [paternalUncles, setPaternalUncles] = useState('0')
   const [heirs, setHeirs] = useState([{ name: '', relation: '', phone: '' }])
 
-  // STEP 4 - WASIYYAH + SPECIFIC GIFTS + GUARDIANSHIP + FUNERAL
+  // STEP 4
   const [wasiyyahTo, setWasiyyahTo] = useState('')
   const [wasiyyahAmt, setWasiyyahAmt] = useState('')
   const [message, setMessage] = useState('')
@@ -177,7 +154,7 @@ export default function WasiyyahPage() {
   const [noExpensiveCeremony, setNoExpensiveCeremony] = useState(true)
   const [funeralNote, setFuneralNote] = useState('')
 
-  // STEP 5 - VIDEO + WITNESSES + LAWYER + NOTIFY
+  // STEP 5
   const [fullName, setFullName] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [location, setLocation] = useState('')
@@ -208,25 +185,15 @@ export default function WasiyyahPage() {
   const [lawyerPaid, setLawyerPaid] = useState(false)
   const [isPremium, setIsPremium] = useState(false)
 
-  // ASK IMAM
+  // ASK IMAM - WHATSAPP ONLY
   const [imamQuestion, setImamQuestion] = useState('')
   const [imamSent, setImamSent] = useState(false)
   const [showImam, setShowImam] = useState(false)
 
-  // VERSION HISTORY + REMINDER
+  // VERSIONS + REMINDER
   const [versions, setVersions] = useState<any[]>([])
   const [lastSaved, setLastSaved] = useState('')
   const [nextReview, setNextReview] = useState('')
-  useEffect(() => {
-    const v = localStorage.getItem('haqq-wasiyyah-versions')
-    if (v) setVersions(JSON.parse(v))
-    const last = localStorage.getItem('haqq-wasiyyah-last-saved')
-    if (last) {
-      setLastSaved(last)
-      const d = new Date(last); d.setMonth(d.getMonth() + 6)
-      setNextReview(d.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }))
-    }
-  }, [])
 
   const num = (v: string) => parseSmartAmount(v)
   const sumList = (l: any) => l.reduce((s: number, x: any) => s + num(x.amt), 0)
@@ -246,10 +213,44 @@ export default function WasiyyahPage() {
       recorder.ondataavailable = (e: any) => chunks.push(e.data)
       recorder.onstop = () => { const blob = new Blob(chunks, { type: 'video/webm' }); const url = URL.createObjectURL(blob); setVideoUrl(url); setVideoFile(blob); stream.getTracks().forEach((t: any) => t.stop()) }
       mediaRecorderRef.current = recorder; recorder.start(); setIsRecording(true)
-    } catch { alert('Please allow camera and microphone access to record your verification video.') }
+    } catch { alert('Please allow camera and microphone access.') }
   }
   const stopRecording = () => { if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); setIsRecording(false) } }
   const handleVideoUpload = (e: any) => { const f = e.target.files[0]; if (f) { setVideoFile(f); setVideoUrl(URL.createObjectURL(f)) } }
+
+  // ASK IMAM - STRAIGHT TO WHATSAPP
+  const sendToImamWhatsApp = () => {
+    if (!imamQuestion.trim()) return alert('Please type your question first.')
+    const text = `Assalamu Alaikum Imam,\n\nI have a question about my Wasiyyah on HAQQ App:\n\nQuestion: ${imamQuestion}\n\nMy details:\nName: ${fullName || 'Not provided'}\nGender: ${myGender}\nMarried: ${isMarried}\nNet Estate: ${fmt(net)}\nChildren: ${sons} sons, ${daughters} daughters\n\nPlease reply me. Jazakum Allahu Khairan.`
+    window.open(`https://wa.me/${IMAM_WHATSAPP}?text=${encodeURIComponent(text)}`, '_blank')
+    setImamSent(true)
+  }
+
+  // UNLOCK TO EDIT
+  const sendOtp = () => {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString()
+    setGeneratedOtp(otp); setOtpSent(true)
+    alert(`Demo OTP sent to your phone: ${otp} - In real app, this will come via SMS/WhatsApp.`)
+  }
+  const unlockToEdit = () => {
+    if (unlockPin !== savedPin) return alert('Incorrect PIN. Only owner can unlock.')
+    if (!otpSent) return alert('Please request OTP first.')
+    if (unlockOtp !== generatedOtp) return alert('Incorrect OTP.')
+    if (!editReason.trim()) return alert('Please select why you want to edit.')
+    setVaultStatus('EDITING'); setIsLocked(false); setShowUnlockModal(false); setOtpSent(false); setUnlockOtp('')
+    alert(`Wasiyyah Unlocked for editing. Reason: ${editReason}. Remember to Save & Lock Again when you finish.`)
+  }
+  const saveAndLockAgain = () => {
+    const now = new Date().toISOString()
+    const data = { fullName, myGender, totalAssets, totalDebts, net, wasiyyahAmt, wasiyyahTo, message, messageSpouse, messageChildren, messageFamily, specificGifts, guardianName, burialLocation, heirs, witness1Name, witness2Name, executorName, location, savedAt: now, editReason, vaultStatus: 'ACTIVE_LOCKED', version: versions.length + 1, videoVerified: !!videoFile, faraid, lawyerChoice, lawyerName, lawyerPaid }
+    localStorage.setItem('haqq-wasiyyah', JSON.stringify(data))
+    localStorage.setItem('haqq-wasiyyah-status', 'ACTIVE_LOCKED')
+    localStorage.setItem('haqq-wasiyyah-last-saved', now)
+    const newVersions = [{ date: now, net, wasiyyahAmt, fullName, editReason }, ...versions].slice(0, 10)
+    setVersions(newVersions); localStorage.setItem('haqq-wasiyyah-versions', JSON.stringify(newVersions))
+    setVaultStatus('ACTIVE_LOCKED'); setLastSaved(now)
+    alert('Your Wasiyyah has been updated and LOCKED again. New version saved.')
+  }
 
   const faraid = useMemo(() => {
     const out: any[] = []
@@ -301,31 +302,28 @@ export default function WasiyyahPage() {
 
   const saveAll = () => {
     if (!declaration || !soundMind) { alert('Please confirm both declarations before saving.'); return }
-    if (!witness1Name || !witness2Name) { alert('Please add two witnesses to legalize your Wasiyyah.'); return }
-    if (lawyerChoice === 'haqq' && !lawyerPaid) { alert('Please pay the HAQQ Lawyer Review Fee of ₦25,000 to continue, or choose My Own Lawyer / No Lawyer Yet.'); return }
+    if (!witness1Name || !witness2Name) { alert('Please add two witnesses.'); return }
+    if (lawyerChoice === 'haqq' && !lawyerPaid) { alert('Please pay HAQQ Lawyer Review Fee of ₦25,000, or choose My Own Lawyer / No Lawyer Yet.'); return }
     const now = new Date().toISOString()
-    const data = { fullName, myGender, totalAssets, totalDebts, net, wasiyyahAmt, wasiyyahTo, message, messageSpouse, messageChildren, messageFamily, specificGifts, guardianName, guardianPhone, backupGuardianName, burialLocation, washBy, janazahLeader, funeralNote, heirs, witness1Name, witness2Name, executorName, backupExecutorName, location, savedAt: now, videoVerified: !!videoFile, faraid, lawyerChoice, lawyerName, lawyerFirm, lawyerPhone, lawyerEmail, haqqLawyerType, haqqLawyerNote, lawyerPaid, isPremium }
+    const data = { fullName, myGender, totalAssets, totalDebts, net, wasiyyahAmt, wasiyyahTo, message, messageSpouse, messageChildren, messageFamily, specificGifts, guardianName, guardianPhone, backupGuardianName, burialLocation, washBy, janazahLeader, funeralNote, heirs, witness1Name, witness2Name, executorName, backupExecutorName, location, savedAt: now, videoVerified: !!videoFile, faraid, lawyerChoice, lawyerName, lawyerFirm, lawyerPhone, lawyerEmail, haqqLawyerType, haqqLawyerNote, lawyerPaid, isPremium, vaultStatus: 'ACTIVE_LOCKED', version: 1 }
     localStorage.setItem('haqq-wasiyyah', JSON.stringify(data))
+    localStorage.setItem('haqq-wasiyyah-status', 'ACTIVE_LOCKED')
     localStorage.setItem('haqq-wasiyyah-last-saved', now)
-    const newVersions = [{ date: now, net, wasiyyahAmt, fullName }, ...versions].slice(0, 10)
-    setVersions(newVersions)
-    localStorage.setItem('haqq-wasiyyah-versions', JSON.stringify(newVersions))
-    const d = new Date(); d.setMonth(d.getMonth() + 6)
-    setNextReview(d.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }))
-    setLastSaved(now)
-    alert('Your Wasiyyah has been saved! Now notify your witnesses and executor below, and download the PDF.')
+    const newVersions = [{ date: now, net, wasiyyahAmt, fullName, editReason: 'First version' }, ...versions].slice(0, 10)
+    setVersions(newVersions); localStorage.setItem('haqq-wasiyyah-versions', JSON.stringify(newVersions))
+    setVaultStatus('ACTIVE_LOCKED'); setLastSaved(now)
+    const d = new Date(); d.setMonth(d.getMonth() + 6); setNextReview(d.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }))
+    alert('Your Wasiyyah has been saved securely in your Vault. It is now LOCKED. Only you can unlock it to edit. Your Executor will only access it after death verification.')
   }
 
-  const downloadPDF = (premium = false) => {
+  const downloadDraftPDF = () => {
     const date = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
     const assetsHtml = [...banks.map(b => `<tr><td>Bank - ${b.name || 'Bank'}</td><td style="text-align:right">${fmt(num(b.amt))}</td></tr>`), ...properties.map(p => `<tr><td>Property - ${p.name || 'Property'}</td><td style="text-align:right">${fmt(num(p.amt))}</td></tr>`), ...cars.map(c => `<tr><td>Car - ${c.name || 'Car'}</td><td style="text-align:right">${fmt(num(c.amt))}</td></tr>`), `<tr><td>Cash at Home</td><td style="text-align:right">${fmt(num(cashHome))}</td></tr>`].join('')
     const debtsHtml = [...loans.map(l => `<tr><td>Loan from ${l.from || 'Lender'}</td><td style="text-align:right">${fmt(num(l.amt))}</td></tr>`), ...owing.map(o => `<tr><td>Owed to ${o.person || 'Person'}</td><td style="text-align:right">${fmt(num(o.amt))}</td></tr>`), `<tr><td>Kaffarah</td><td style="text-align:right">${fmt(num(kaffarahAmt))}</td></tr><tr><td>Funeral Expenses</td><td style="text-align:right">${fmt(num(funeralAmt))}</td></tr>`].join('')
     const faraidHtml = faraid.map((f: any) => `<tr><td>${f.name} (${f.pct})</td><td style="text-align:right">${fmt(f.amt)}</td></tr>`).join('') || '<tr><td colspan="2">No heirs listed</td></tr>'
-    const giftsHtml = specificGifts.filter(g => g.item).map(g => `<tr><td>${g.item} → To ${g.to} (${g.note || ''})</td><td></td></tr>`).join('') || '<tr><td colspan="2">No specific gifts</td></tr>'
-    const heirsHtml = heirs.filter(h => h.name).map(h => `<tr><td>${h.name} - ${h.relation}</td><td>${h.phone}</td></tr>`).join('') || '<tr><td colspan="2">No heir contacts listed</td></tr>'
-    const lawyerText = lawyerChoice === 'mine' ? `${lawyerName || '-'} - ${lawyerFirm || ''} (${lawyerPhone || ''} / ${lawyerEmail || ''})` : lawyerChoice === 'haqq' ? `HAQQ Partner Lawyer - ${haqqLawyerType} - Paid: ${lawyerPaid ? 'Yes ₦25,000' : 'Pending'} - Note: ${haqqLawyerNote || 'None'}` : 'No lawyer selected yet'
-    const seal = premium || isPremium ? `<div style="text-align:center;border:3px double #0A1931;padding:12px;border-radius:50%;width:140px;height:140px;margin:20px auto;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px">HAQQ PREMIUM<br/>VERIFIED SEAL<br/>✓</div><p style="text-align:center;font-size:12px">Premium Verified Document - Reviewed & Sealed</p>` : ''
-    const html = `<html><head><title>Wasiyyah - ${fullName || 'HAQQ'}</title><style>body{font-family:Georgia,serif;max-width:750px;margin:0 auto;padding:40px;color:#111;line-height:1.6} h1{text-align:center;font-size:32px;letter-spacing:4px;margin:0} .sub{text-align:center;color:#555;font-size:13px} h2{border-bottom:2px solid #0A1931;padding-bottom:6px;margin-top:30px;font-size:18px} table{width:100%;border-collapse:collapse;margin-top:10px} td{padding:8px 4px;border-bottom:1px solid #eee;font-size:14px} .total{font-weight:bold} .box{background:#f7f7f7;padding:16px;border-radius:10px;margin-top:10px} .sig{margin-top:60px;display:flex;justify-content:space-between} .line{border-top:1px solid #000;width:220px;padding-top:6px;text-align:center;font-size:12px} @media print{body{padding:20px}}</style></head><body>${seal}<h1>HAQQ</h1><p class="sub">ISLAMIC WILL & TESTAMENT - WASIYYAH ${premium || isPremium ? '(PREMIUM)' : ''}</p><p style="text-align:center;font-size:13px">Made on ${date} in ${location || 'Nigeria'}</p><div class="box"><b>I, ${fullName || '[Full Name]'}</b>, being of sound mind, do hereby make this Wasiyyah willingly and without pressure. I bear witness that there is no god but Allah and Muhammad (peace be upon him) is His Messenger.</div><h2>1. My Assets</h2><table>${assetsHtml}<tr class="total"><td>Total Assets</td><td style="text-align:right">${fmt(totalAssets)}</td></tr></table><h2>2. My Debts & Rights</h2><table>${debtsHtml}<tr class="total"><td>Total Debts</td><td style="text-align:right">${fmt(totalDebts)}</td></tr><tr class="total"><td>Net Estate</td><td style="text-align:right">${fmt(net)}</td></tr></table><h2>3. Specific Gifts</h2><table>${giftsHtml}</table><h2>4. Wasiyyah (One-Third)</h2><p>I bequeath <b>${fmt(num(wasiyyahAmt))}</b> (maximum ${fmt(maxWasiyyah)}) to <b>${wasiyyahTo || 'Charity / Non-heir'}</b>.</p><h2>5. Faraid Distribution</h2><table>${faraidHtml}<tr class="total"><td>Total for Faraid</td><td style="text-align:right">${fmt(faraidPool)}</td></tr></table><h2>6. Guardianship of Minor Children</h2><p>${hasMinors === 'yes' ? `Guardian: ${guardianName} (${guardianRelation}) - ${guardianPhone}. Backup Guardian: ${backupGuardianName} - ${backupGuardianPhone}.` : 'No minor children / No guardianship required.'}</p><h2>7. Funeral & Burial Wishes</h2><p>Burial Location: ${burialLocation || '-'}<br/>Washing By: ${washBy || '-'}<br/>Janazah Led By: ${janazahLeader || '-'}<br/>No Expensive Ceremony: ${noExpensiveCeremony ? 'Yes - Please keep it simple' : 'No'}<br/>Note: ${funeralNote || '-'}</p><h2>8. Heirs Contact Details</h2><table>${heirsHtml}</table><h2>9. Messages To My Family</h2><p><b>To My Spouse:</b> ${messageSpouse || '-'}<br/><b>To My Children:</b> ${messageChildren || '-'}<br/><b>To My Family:</b> ${messageFamily || message || '-'}</p><h2>10. Executor, Lawyer & Witnesses</h2><p><b>Executor:</b> ${executorName || '-'} (${executorPhone || '-'})<br/><b>Backup Executor:</b> ${backupExecutorName || '-'} (${backupExecutorPhone || '-'})<br/><b>Lawyer:</b> ${lawyerText}<br/><b>Witness 1:</b> ${witness1Name || '-'} (${witness1Phone || '-'})<br/><b>Witness 2:</b> ${witness2Name || '-'} (${witness2Phone || '-'})</p><p><b>Video Verification:</b> ${videoUrl ? 'Completed' : 'Not recorded'}<br/><b>Declaration:</b> I confirm this Wasiyyah was made in sound mind and willingly.</p><div class="sig"><div><div class="line">Signature of Testator<br/>${fullName || ''}<br/>Date: ${date}</div></div><div><div class="line">Witness 1 Signature<br/>Date: ${date}</div></div></div><div class="sig"><div><div class="line">Witness 2 Signature<br/>Date: ${date}</div></div><div><div class="line">Lawyer Signature<br/>${lawyerChoice === 'mine' ? lawyerName : lawyerChoice === 'haqq' ? 'HAQQ Partner Lawyer' : ''}<br/>Date: ${date}</div></div></div><p style="font-size:11px;color:#777;margin-top:30px;text-align:center">Generated by HAQQ App - Based on Qur&apos;an 4:11-12. For full legal effect, please sign before a lawyer, Sharia Court or Notary.</p><script>window.onload=()=>window.print()</script></body></html>`
+    const giftsHtml = specificGifts.filter(g => g.item).map(g => `<tr><td>${g.item} → To ${g.to}</td><td>${g.note || ''}</td></tr>`).join('') || '<tr><td colspan="2">No specific gifts</td></tr>'
+    const lawyerText = lawyerChoice === 'mine' ? `${lawyerName || '-'} - ${lawyerFirm || ''}` : lawyerChoice === 'haqq' ? `HAQQ Partner Lawyer - ${haqqLawyerType}` : 'No lawyer selected yet'
+    const html = `<html><head><title>DRAFT Wasiyyah - ${fullName || 'HAQQ'}</title><style>body{font-family:Georgia,serif;max-width:750px;margin:0 auto;padding:40px;color:#111;line-height:1.6} h1{text-align:center;font-size:32px;letter-spacing:4px;margin:0} .watermark{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:80px;color:rgba(255,0,0,0.15);font-weight:bold;z-index:0} h2{border-bottom:2px solid #0A1931;padding-bottom:6px;margin-top:30px;font-size:18px} table{width:100%;border-collapse:collapse;margin-top:10px} td{padding:8px 4px;border-bottom:1px solid #eee;font-size:14px} .total{font-weight:bold} .box{background:#f7f7f7;padding:16px;border-radius:10px;margin-top:10px} @media print{body{padding:20px}}</style></head><body><div class="watermark">DRAFT</div><h1>HAQQ</h1><p style="text-align:center;color:red;font-weight:bold">DRAFT COPY ONLY - NOT FINAL - FOR LAWYER REVIEW ONLY</p><p style="text-align:center;font-size:13px">Made on ${date} in ${location || 'Nigeria'}</p><div class="box"><b>I, ${fullName || '[Full Name]'}</b>, being of sound mind, do hereby make this Wasiyyah willingly.</div><h2>1. Assets</h2><table>${assetsHtml}<tr class="total"><td>Total Assets</td><td style="text-align:right">${fmt(totalAssets)}</td></tr></table><h2>2. Debts</h2><table>${debtsHtml}<tr class="total"><td>Net Estate</td><td style="text-align:right">${fmt(net)}</td></tr></table><h2>3. Specific Gifts</h2><table>${giftsHtml}</table><h2>4. Wasiyyah (One-Third)</h2><p>I bequeath <b>${fmt(num(wasiyyahAmt))}</b> to <b>${wasiyyahTo || 'Charity'}</b>.</p><h2>5. Faraid</h2><table>${faraidHtml}<tr class="total"><td>Total for Faraid</td><td style="text-align:right">${fmt(faraidPool)}</td></tr></table><h2>6. Guardianship</h2><p>${hasMinors === 'yes' ? `Guardian: ${guardianName} - ${guardianPhone}. Backup: ${backupGuardianName}` : 'No minors'}</p><h2>7. Funeral Wishes</h2><p>Burial: ${burialLocation || '-'} | Wash By: ${washBy || '-'} | Janazah: ${janazahLeader || '-'} | Simple Ceremony: ${noExpensiveCeremony ? 'Yes' : 'No'} | Note: ${funeralNote || '-'}</p><h2>8. Executor, Lawyer & Witnesses</h2><p>Executor: ${executorName} (${executorPhone})<br/>Backup Executor: ${backupExecutorName} (${backupExecutorPhone})<br/>Lawyer: ${lawyerText}<br/>Witness 1: ${witness1Name} (${witness1Phone})<br/>Witness 2: ${witness2Name} (${witness2Phone})</p><p style="font-size:11px;color:#777;margin-top:30px;text-align:center">DRAFT - Generated by HAQQ App - Final version is locked in HAQQ Vault.</p><script>window.onload=()=>window.print()</script></body></html>`
     const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close() }
   }
 
@@ -339,14 +337,14 @@ export default function WasiyyahPage() {
           <h1 className="text-[28px] font-black">HAQQ 🔒</h1>
           <p className="text-sm text-gray-600 mt-1">Your Wasiyyah Vault is locked. Enter your PIN to open it.</p>
           <input value={pinInput} onChange={(e) => setPinInput(e.target.value)} placeholder="Enter 4-digit PIN" maxLength={4} inputMode="numeric" className="w-full mt-4 p-3 border rounded-xl text-center text-xl font-black tracking-widest outline-none" />
-          <button onClick={unlock} className="w-full mt-3 bg-black text-white py-3.5 rounded-full font-bold">Unlock My Wasiyyah</button>
+          <button onClick={unlockVaultEntry} className="w-full mt-3 bg-black text-white py-3.5 rounded-full font-bold">Unlock My Wasiyyah</button>
           {!showPinSetup ? <button onClick={() => setShowPinSetup(true)} className="text-[12px] mt-3 text-gray-500 underline">Set / Change PIN</button> : (
             <div className="mt-3">
               <input value={newPin} onChange={(e) => setNewPin(e.target.value)} placeholder="New 4-digit PIN" maxLength={4} className="w-full p-3 border rounded-xl text-center font-bold" />
               <button onClick={() => { if (newPin.length === 4) { localStorage.setItem('haqq-wasiyyah-pin', newPin); setSavedPin(newPin); setIsLocked(false); alert('PIN saved!') } else alert('PIN must be 4 digits') }} className="w-full mt-2 bg-[#0A1931] text-white py-3 rounded-full font-bold text-sm">Save New PIN</button>
             </div>
           )}
-          <p className="text-[11px] text-gray-400 mt-3">Default PIN is 1234 if you never set one. Keep your PIN safe.</p>
+          <p className="text-[11px] text-gray-400 mt-3">Default PIN is 1234 if you never set one.</p>
         </div>
       </div>
     )
@@ -365,24 +363,46 @@ export default function WasiyyahPage() {
 
         {showImam && (
           <div className="bg-white rounded-[20px] p-4 mt-4 text-black">
-            <h3 className="font-extrabold">Ask Imam - Faraid Questions</h3>
+            <h3 className="font-extrabold">Ask Imam - On WhatsApp</h3>
             <div className="text-[13px] mt-2 space-y-2">
               <p><b>Q: Can I give everything to one child?</b><br/>A: No. After debts and max 1/3 Wasiyyah, the rest must follow Faraid.</p>
               <p><b>Q: Can I give Wasiyyah to my heir?</b><br/>A: Generally no, unless all other heirs agree after your death.</p>
-              <p><b>Q: Does my wife get 1/8 or 1/4?</b><br/>A: 1/8 if you have children, 1/4 if you have no children.</p>
+              <p><b>Q: Does my wife get 1/8 or 1/4?</b><br/>A: 1/8 if you have children, 1/4 if no children.</p>
             </div>
             {!imamSent ? (
               <div className="mt-3">
                 <textarea value={imamQuestion} onChange={(e) => setImamQuestion(e.target.value)} placeholder="Ask your question about Faraid, Wasiyyah, guardianship..." className="w-full p-3 border rounded-xl text-sm outline-none min-h-[70px]" />
-                <button onClick={() => { if (imamQuestion.trim()) { setImamSent(true); alert('Your question has been sent to an Imam. You will get a reply within 24 hours.') } }} className="w-full mt-2 bg-[#0A1931] text-white py-3 rounded-full font-bold text-sm">Send Question to Imam</button>
+                <button onClick={sendToImamWhatsApp} className="w-full mt-2 bg-green-500 text-white py-3 rounded-full font-bold text-sm">Send To Imam On WhatsApp 💬</button>
+                <p className="text-[11px] text-gray-500 text-center mt-1">This will open WhatsApp directly to the Imam. He will reply you there.</p>
               </div>
-            ) : <p className="text-green-600 font-bold text-sm mt-3">✓ Your question has been sent. An Imam will reply soon.</p>}
+            ) : <p className="text-green-600 font-bold text-sm mt-3">✓ Opened WhatsApp to Imam. He will reply you there.</p>}
           </div>
         )}
 
-        {lastSaved && (
+        {vaultStatus === 'ACTIVE_LOCKED' && (
+          <div className="bg-white rounded-[20px] p-4 mt-4 text-black text-center">
+            <p className="font-extrabold">🔒 Your Wasiyyah Is Locked & Safe In Vault</p>
+            <p className="text-[12px] text-gray-600 mt-1">Only you can unlock it to update. Executor / Lawyer cannot edit it.</p>
+            <button onClick={() => setShowUnlockModal(true)} className="w-full mt-3 bg-black text-white py-3 rounded-full font-bold text-sm">🔓 Unlock To Edit My Wasiyyah</button>
+            <p className="text-[11px] text-gray-400 mt-2">Last saved: {lastSaved ? new Date(lastSaved).toLocaleDateString('en-NG') : 'Not saved yet'} • Version {versions.length || 1}</p>
+          </div>
+        )}
+        {vaultStatus === 'EDITING' && (
+          <div className="bg-yellow-400 text-black rounded-[20px] p-4 mt-4 text-center">
+            <p className="font-extrabold">🔓 EDITING MODE - Wasiyyah Is Unlocked</p>
+            <p className="text-[12px] mt-1">You can now edit anything. When you finish, click Save & Lock Again below.</p>
+            <p className="text-[11px] font-bold mt-1">Reason: {editReason}</p>
+          </div>
+        )}
+        {vaultStatus === 'RELEASED' && (
+          <div className="bg-red-100 text-black rounded-[20px] p-4 mt-4 text-center">
+            <p className="font-extrabold">⚠️ This Wasiyyah Has Been Released After Death Verification</p>
+            <p className="text-[12px] mt-1">It can no longer be edited. Only Executor & Lawyer can download and execute it.</p>
+          </div>
+        )}
+        {lastSaved && vaultStatus !== 'ACTIVE_LOCKED' && (
           <div className="bg-yellow-50 text-black rounded-[16px] p-3 mt-4 text-[12px]">
-            <b>Reminder:</b> Last saved on {new Date(lastSaved).toLocaleDateString('en-NG')}. Please review and update your Wasiyyah by <b>{nextReview}</b> - especially if you married, had a child, bought property, or paid off a debt.
+            <b>Reminder:</b> Last saved on {new Date(lastSaved).toLocaleDateString('en-NG')}. Please review and update by <b>{nextReview}</b>.
             <button onClick={() => setStep(1)} className="ml-2 underline font-bold">Update Now</button>
           </div>
         )}
@@ -514,7 +534,7 @@ export default function WasiyyahPage() {
             {heirs.map((h: any, i: number) => (
               <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 mt-2">
                 <Input value={h.name} onChange={(e: any) => { const n = [...heirs]; n[i].name = e.target.value; setHeirs(n) }} placeholder="Heir Name" />
-                <Input value={h.relation} onChange={(e: any) => { const n = [...heirs]; n[i].relation = e.target.value; setHeirs(n) }} placeholder="Relation - e.g. Son" />
+                <Input value={h.relation} onChange={(e: any) => { const n = [...heirs]; n[i].relation = e.target.value; setHeirs(n) }} placeholder="Relation" />
                 <Input value={h.phone} onChange={(e: any) => { const n = [...heirs]; n[i].phone = e.target.value; setHeirs(n) }} placeholder="Phone" />
                 {heirs.length > 1 && <button onClick={() => setHeirs(heirs.filter((_: any, idx: number) => idx !== i))} className="text-red-500 font-black">×</button>}
               </div>
@@ -538,7 +558,7 @@ export default function WasiyyahPage() {
               <Input value={wasiyyahTo} onChange={(e: any) => setWasiyyahTo(e.target.value)} placeholder="Beneficiary - e.g. Mosque, Orphanage" />
               <div className="mt-3"><Input value={wasiyyahAmt} onChange={(e: any) => setWasiyyahAmt(e.target.value)} placeholder="Wasiyyah Amount - e.g. 1m or 1 million" /></div>
               <Hint />
-              {num(wasiyyahAmt) > maxWasiyyah && <p className="text-red-600 text-[12px] font-bold mt-2">This amount exceeds one-third of your Net Estate. Please reduce it to {fmt(maxWasiyyah)} or less.</p>}
+              {num(wasiyyahAmt) > maxWasiyyah && <p className="text-red-600 text-[12px] font-bold mt-2">This amount exceeds one-third. Please reduce it to {fmt(maxWasiyyah)} or less.</p>}
               <div className="mt-4 bg-gray-50 rounded-xl p-3 space-y-2 text-sm text-black">
                 <div className="flex justify-between"><span>Total Assets</span><span className="font-bold">{fmt(totalAssets)}</span></div>
                 <div className="flex justify-between"><span>Total Debts</span><span className="font-bold text-red-600">-{fmt(totalDebts)}</span></div>
@@ -586,7 +606,7 @@ export default function WasiyyahPage() {
             </Q>
             <Q title="Faraid Distribution - My Family">
               <div className="mt-3 space-y-2">
-                {faraid.length === 0 && <p className="text-gray-500 text-sm">Please add your family members in Step 3 to view their shares.</p>}
+                {faraid.length === 0 && <p className="text-gray-500 text-sm">Please add your family members in Step 3.</p>}
                 {faraid.map((f: any, i: number) => (
                   <div key={i} className="flex justify-between bg-gray-50 p-3 rounded-xl"><div><p className="font-bold text-sm">{f.name}</p><p className="text-[11px] text-gray-500">{f.pct}</p></div><p className="font-black">{fmt(f.amt)}</p></div>
                 ))}
@@ -601,7 +621,7 @@ export default function WasiyyahPage() {
               <textarea value={messageChildren} onChange={(e) => setMessageChildren(e.target.value)} placeholder="Write a message to your children..." className="w-full p-3 border rounded-xl text-sm outline-none min-h-[70px]" />
               <Label>Message To My Family</Label>
               <textarea value={messageFamily} onChange={(e) => setMessageFamily(e.target.value)} placeholder="Write a general message to your family..." className="w-full p-3 border rounded-xl text-sm outline-none min-h-[70px]" />
-              <div className="mt-3"><textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Final message - e.g. May Allah forgive me..." className="w-full p-3 border rounded-xl text-sm outline-none min-h-[70px]" /></div>
+              <div className="mt-3"><textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Final message..." className="w-full p-3 border rounded-xl text-sm outline-none min-h-[70px]" /></div>
             </Q>
             <div className="flex gap-3">
               <button onClick={() => setStep(3)} className="flex-1 py-3.5 rounded-full bg-white text-black font-bold">Back</button>
@@ -613,7 +633,7 @@ export default function WasiyyahPage() {
         {step === 5 && (
           <>
             <Q title="Step 5 - Video Verification & Legalization">
-              <p className="text-[13px] text-gray-600 mt-1 leading-relaxed">To make your Wasiyyah valid and difficult to dispute, please record a short video confirming this is your Wasiyyah, and add two witnesses and an executor.</p>
+              <p className="text-[13px] text-gray-600 mt-1 leading-relaxed">Record a short video confirming this is your Wasiyyah, and add two witnesses and an executor.</p>
               <Label>Your Full Name</Label>
               <Input value={fullName} onChange={(e: any) => setFullName(e.target.value)} placeholder="Your Full Name as on ID" />
               <div className="grid grid-cols-2 gap-3 mt-3">
@@ -636,10 +656,10 @@ export default function WasiyyahPage() {
               <Label>Witness 2 - Must Be An Adult Muslim</Label>
               <Input value={witness2Name} onChange={(e: any) => setWitness2Name(e.target.value)} placeholder="Witness 2 Full Name" />
               <div className="mt-2"><Input value={witness2Phone} onChange={(e: any) => setWitness2Phone(e.target.value)} placeholder="Witness 2 Phone Number" /></div>
-              <Label>Executor - Person Who Will Carry Out Your Wasiyyah</Label>
+              <Label>Executor</Label>
               <Input value={executorName} onChange={(e: any) => setExecutorName(e.target.value)} placeholder="Executor Full Name" />
               <div className="mt-2"><Input value={executorPhone} onChange={(e: any) => setExecutorPhone(e.target.value)} placeholder="Executor Phone Number" /></div>
-              <Label>Backup Executor - If First Executor Is Not Available</Label>
+              <Label>Backup Executor</Label>
               <Input value={backupExecutorName} onChange={(e: any) => setBackupExecutorName(e.target.value)} placeholder="Backup Executor Full Name" />
               <div className="mt-2"><Input value={backupExecutorPhone} onChange={(e: any) => setBackupExecutorPhone(e.target.value)} placeholder="Backup Executor Phone Number" /></div>
 
@@ -662,7 +682,7 @@ export default function WasiyyahPage() {
               {lawyerChoice === 'haqq' && (
                 <div className="mt-3 bg-blue-50 p-3 rounded-xl">
                   <p className="text-[13px] font-bold text-black">HAQQ Partner Lawyer - Review Fee: ₦25,000</p>
-                  <p className="text-[12px] text-gray-600 mt-1">We will connect you with a verified partner lawyer in your state to review and legalize your Wasiyyah.</p>
+                  <p className="text-[12px] text-gray-600 mt-1">We will connect you with a verified partner lawyer in your state.</p>
                   <div className="mt-3">
                     <select value={haqqLawyerType} onChange={(e) => setHaqqLawyerType(e.target.value)} className="w-full p-3 bg-white rounded-xl border text-black text-sm font-medium outline-none">
                       <option>Sharia Court Lawyer</option>
@@ -671,13 +691,10 @@ export default function WasiyyahPage() {
                     </select>
                   </div>
                   <div className="mt-2"><textarea value={haqqLawyerNote} onChange={(e) => setHaqqLawyerNote(e.target.value)} placeholder="Any note for the lawyer? e.g. I am in Kano..." className="w-full p-3 bg-white rounded-xl border text-black placeholder:text-gray-400 text-sm outline-none min-h-[70px]" /></div>
-                  <div className="flex justify-between items-center mt-3 bg-white p-3 rounded-xl">
-                    <span className="text-sm font-bold">Lawyer Review Fee</span><span className="font-black">₦25,000</span>
-                  </div>
                   {!lawyerPaid ? <button onClick={() => { setLawyerPaid(true); alert('Payment successful! HAQQ Lawyer will contact you within 24 hours.') }} className="w-full mt-2 bg-green-600 text-white py-3 rounded-full font-bold text-sm">Pay ₦25,000 - HAQQ Lawyer Review</button> : <p className="text-green-600 font-bold text-sm mt-2 text-center">✓ Paid - Lawyer will contact you within 24 hours</p>}
                 </div>
               )}
-              {lawyerChoice === 'none' && <p className="text-[12px] text-gray-500 mt-2">You can still download the PDF and take it to any lawyer later.</p>}
+              {lawyerChoice === 'none' && <p className="text-[12px] text-gray-500 mt-2">You can still save to Vault and take DRAFT to any lawyer later.</p>}
 
               <Label>Premium PDF - With HAQQ Seal</Label>
               <div className="flex justify-between items-center bg-yellow-50 p-3 rounded-xl">
@@ -712,15 +729,25 @@ export default function WasiyyahPage() {
               {versions.length > 0 && (
                 <div className="mt-3 pt-3 border-t">
                   <p className="font-bold text-[13px]">Version History ({versions.length})</p>
-                  {versions.slice(0, 3).map((v: any, i: number) => (<p key={i} className="text-[12px] text-gray-500">Version {versions.length - i} - {new Date(v.date).toLocaleDateString('en-NG')} - Net: {fmt(v.net)}</p>))}
+                  {versions.slice(0, 3).map((v: any, i: number) => (<p key={i} className="text-[12px] text-gray-500">Version {versions.length - i} - {new Date(v.date).toLocaleDateString('en-NG')} - Net: {fmt(v.net)} {v.editReason ? `- ${v.editReason}` : ''}</p>))}
                 </div>
               )}
             </div>
 
+            <div className="bg-green-50 p-4 rounded-[20px] text-black text-center">
+              <p className="font-extrabold">🔒 Your Wasiyyah Will Be Saved Securely In Your Vault</p>
+              <p className="text-[13px] text-gray-600 mt-1 leading-relaxed">It will NOT be downloaded to your phone. It will be stored encrypted in HAQQ Vault. Only your Executor, Witnesses and Lawyer can access it after death verification with a Death Certificate.</p>
+              <p className="text-[12px] font-bold mt-2">Status after saving: ACTIVE & LOCKED ✓</p>
+            </div>
+
             <div className="flex flex-col gap-3">
-              <button onClick={saveAll} className="w-full py-3.5 rounded-full bg-black text-white font-bold">Save & Legalize My Wasiyyah</button>
-              <button onClick={() => downloadPDF(false)} className="w-full py-3.5 rounded-full bg-[#0A1931] text-white font-bold border border-white/20">📄 Download Standard PDF (Free)</button>
-              <button onClick={() => downloadPDF(true)} className="w-full py-3.5 rounded-full bg-yellow-400 text-black font-bold">⭐ Download Premium PDF - With Seal</button>
+              {vaultStatus === 'EDITING' ? (
+                <button onClick={saveAndLockAgain} className="w-full py-3.5 rounded-full bg-yellow-400 text-black font-bold">Save Changes & Lock Again 🔒</button>
+              ) : (
+                <button onClick={saveAll} className="w-full py-3.5 rounded-full bg-black text-white font-bold">Save To My Vault - Lock My Wasiyyah</button>
+              )}
+              <button onClick={downloadDraftPDF} className="w-full py-3 rounded-full bg-white text-black font-bold text-sm border">Download DRAFT Copy (With DRAFT Watermark) - For Lawyer Review Only</button>
+              <a href="/vault" className="block text-center py-3 rounded-full bg-[#0A1931] text-white font-bold text-sm">View My Vault →</a>
               <button onClick={() => setStep(4)} className="w-full py-3 rounded-full bg-white text-black font-bold">Back</button>
             </div>
 
@@ -733,10 +760,41 @@ export default function WasiyyahPage() {
                 {!witness1Phone && !witness2Phone && !executorPhone && <p className="text-gray-500 text-sm text-center">Add phone numbers for witnesses and executor to enable WhatsApp notification.</p>}
               </div>
             </Q>
+            <a href="/report-death" className="block text-center bg-red-600 text-white py-3 rounded-full font-bold text-sm">Report Death - Release Wasiyyah</a>
           </>
         )}
       </div>
+
+      {showUnlockModal && vaultStatus === 'ACTIVE_LOCKED' && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+          <div className="bg-white rounded-[24px] p-6 w-full max-w-[400px] text-black">
+            <h3 className="font-extrabold text-[18px] text-center">Unlock To Edit 🔓</h3>
+            <p className="text-[13px] text-gray-600 text-center mt-1">For security, enter your PIN + OTP. Only owner can unlock.</p>
+            <label className="text-[11px] font-bold mt-4 block">WHY DO YOU WANT TO EDIT?</label>
+            <select value={editReason} onChange={(e) => setEditReason(e.target.value)} className="w-full p-3 border rounded-xl mt-1 text-sm outline-none">
+              <option value="">Select reason...</option>
+              <option value="I got married / divorced">I got married / divorced</option>
+              <option value="I had a new child">I had a new child</option>
+              <option value="I bought new property / asset">I bought new property / asset</option>
+              <option value="I paid off a debt">I paid off a debt</option>
+              <option value="I want to change executor / guardian">I want to change executor / guardian</option>
+              <option value="I want to change lawyer">I want to change lawyer</option>
+              <option value="Other">Other</option>
+            </select>
+            <label className="text-[11px] font-bold mt-3 block">ENTER YOUR VAULT PIN</label>
+            <input value={unlockPin} onChange={(e) => setUnlockPin(e.target.value)} placeholder="4-digit PIN" maxLength={4} inputMode="numeric" className="w-full p-3 border rounded-xl mt-1 text-center font-black tracking-widest outline-none" />
+            <label className="text-[11px] font-bold mt-3 block">OTP VERIFICATION</label>
+            <div className="flex gap-2 mt-1">
+              <input value={unlockOtp} onChange={(e) => setUnlockOtp(e.target.value)} placeholder="6-digit OTP" maxLength={6} inputMode="numeric" className="flex-1 p-3 border rounded-xl text-center font-bold outline-none" />
+              <button onClick={sendOtp} className="px-4 bg-[#0A1931] text-white rounded-xl font-bold text-sm">Send OTP</button>
+            </div>
+            {otpSent && <p className="text-[11px] text-green-600 mt-1">OTP sent to your registered phone.</p>}
+            <button onClick={unlockToEdit} className="w-full mt-4 bg-black text-white py-3.5 rounded-full font-bold">Unlock & Start Editing</button>
+            <button onClick={() => setShowUnlockModal(false)} className="w-full mt-2 py-3 rounded-full border font-bold text-sm">Cancel - Keep Locked</button>
+          </div>
+        </div>
+      )}
       <BottomNav />
     </div>
   )
-}
+            }
