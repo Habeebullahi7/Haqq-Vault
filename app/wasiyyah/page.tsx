@@ -1,6 +1,6 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
-import BottomNav from '../components/BottomNav'
+import BottomNav from '../../components/BottomNav'
 
 // ===== FARAID ENGINE - QURAN 4:11-12, 4:176 =====
 function calculateFaraid(args:any, pool:number){
