@@ -24,8 +24,14 @@ export default function VaultPage() {
   const [newDebt, setNewDebt] = useState({ person: '', amount: '', type: 'i_owe', due_date: '', note: '', customNote: '' });
   const [hadith, setHadith] = useState(hadiths[0]);
 
+  // ===== WASIYYAH VAULT =====
+  const [wasiyyah, setWasiyyah] = useState<any>(null);
+  const [wasiyyahStatus, setWasiyyahStatus] = useState('DRAFT');
+  const [versions, setVersions] = useState<any[]>([]);
+
   useEffect(() => {
     fetchDebts();
+    fetchWasiyyah();
     const today = new Date().toDateString();
     const savedDay = localStorage.getItem("hadithDay");
     const savedIndex = localStorage.getItem("hadithIndex");
@@ -38,6 +44,33 @@ export default function VaultPage() {
       localStorage.setItem("hadithIndex", r.toString());
     }
   }, []);
+
+  async function fetchWasiyyah() {
+    // 1. Try Supabase first (real DB)
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from('wasiyyahs').select('*').eq('user_id', user.id).single();
+        if (data) {
+          setWasiyyah(data);
+          setWasiyyahStatus(data.vault_status || 'DRAFT');
+          // Fetch versions
+          const { data: vers } = await supabase.from('wasiyyah_versions').select('*').eq('wasiyyah_id', data.id).order('created_at', { ascending: false });
+          if (vers) setVersions(vers);
+          return;
+        }
+      }
+    } catch {}
+    // 2. Fallback to localStorage (for now, before Auth is fully set up)
+    const local = localStorage.getItem("haqq-wasiyyah");
+    if (local) {
+      const parsed = JSON.parse(local);
+      setWasiyyah(parsed);
+      setWasiyyahStatus(localStorage.getItem("haqq-wasiyyah-status") || 'ACTIVE_LOCKED');
+    }
+    const localVers = localStorage.getItem("haqq-wasiyyah-versions");
+    if (localVers) setVersions(JSON.parse(localVers));
+  }
 
   async function fetchDebts() {
     const { data } = await supabase.from('debts').select('*').order('created_at', { ascending: false });
@@ -52,16 +85,23 @@ export default function VaultPage() {
       ? newDebt.customNote 
       : newDebt.note + (newDebt.customNote ? ` - ${newDebt.customNote}` : '');
 
+    const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('debts').insert([{ 
       person: newDebt.person,
       amount: Number(newDebt.amount) || 0, 
       type: newDebt.type,
-      due_date: newDebt.due_date,
+      due_date: newDebt.due_date || null,
       note: finalNote,
-      status: 'pending' 
+      status: 'pending',
+      user_id: user?.id || null
     }]);
     setShowAdd(false);
     setNewDebt({ person: '', amount: '', type: 'i_owe', due_date: '', note: '', customNote: '' });
+    fetchDebts();
+  }
+
+  async function markPaid(id: string) {
+    await supabase.from('debts').update({ status: 'paid' }).eq('id', id);
     fetchDebts();
   }
 
@@ -76,6 +116,53 @@ export default function VaultPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
+        {/* ===== WASIYYAH VAULT CARD - NEW ===== */}
+        <div className="bg-white text-[#0f172a] rounded-[20px] p-5 shadow-xl border-2 border-[#D4AF37]/40">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-[10px] tracking-widest text-[#D4AF37] font-bold">📜 MY WASIYYAH - ISLAMIC WILL</p>
+              <h2 className="font-extrabold text-[18px] mt-1">{wasiyyah ? (wasiyyah.full_name || 'My Wasiyyah') : 'No Wasiyyah Saved Yet'}</h2>
+            </div>
+            {wasiyyah && (
+              <span className={`text-[10px] px-2 py-1 rounded-full font-bold whitespace-nowrap ${wasiyyahStatus === 'ACTIVE_LOCKED' ? 'bg-green-100 text-green-700' : wasiyyahStatus === 'RELEASED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                {wasiyyahStatus === 'ACTIVE_LOCKED' ? '🔒 LOCKED & SAFE' : wasiyyahStatus === 'EDITING' ? '🔓 EDITING' : wasiyyahStatus === 'RELEASED' ? '⚠️ RELEASED' : '📝 DRAFT'}
+              </span>
+            )}
+          </div>
+
+          {!wasiyyah ? (
+            <>
+              <p className="text-sm text-gray-600 mt-2">Your Wasiyyah is not in the Vault yet. Create it now - it will be locked here until after death verification.</p>
+              <a href="/wasiyyah" className="block text-center mt-4 bg-[#0f172a] text-white py-3 rounded-full font-bold text-sm no-underline">Create My Wasiyyah →</a>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 mt-4 text-sm">
+                <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">NET ESTATE</p><p className="font-extrabold">₦{(wasiyyah.net_estate ?? wasiyyah.net ?? 0).toLocaleString()}</p></div>
+                <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">WASIYYAH (1/3)</p><p className="font-extrabold">₦{(Number(String(wasiyyah.wasiyyah_amount || wasiyyah.wasiyyahAmt || '0').replace(/,/g, '')) || 0).toLocaleString()}</p></div>
+                <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">EXECUTOR</p><p className="font-bold truncate">{wasiyyah.executor_name || wasiyyah.executorName || '-'}</p></div>
+                <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">LAWYER</p><p className="font-bold truncate">{wasiyyah.lawyer_choice === 'haqq' ? 'HAQQ Lawyer' : wasiyyah.lawyer_name || wasiyyah.lawyerName || 'No Lawyer Yet'}</p></div>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-3 bg-yellow-50 p-3 rounded-xl">
+                🔒 Locked: Only you can unlock to edit (PIN + OTP). Executor / Lawyer can only access after death verification.
+                {versions.length > 0 && <><br/>Version History: {versions.length} version(s) saved.</>}
+              </p>
+              <div className="flex gap-2 mt-3">
+                <a href="/wasiyyah" className="flex-1 text-center bg-[#0f172a] text-white py-3 rounded-full font-bold text-sm no-underline">Unlock To Edit</a>
+                <a href="/report-death" className="flex-1 text-center bg-red-600 text-white py-3 rounded-full font-bold text-sm no-underline">Report Death</a>
+              </div>
+              {versions.length > 0 && (
+                <div className="mt-3 pt-3 border-t">
+                  <p className="text-[11px] font-bold">VERSION HISTORY</p>
+                  {versions.slice(0, 3).map((v: any, i: number) => (
+                    <p key={i} className="text-[11px] text-gray-500">Version {versions.length - i} - {new Date(v.created_at || v.date).toLocaleDateString('en-NG')} - ₦{(v.net_estate ?? v.net ?? 0).toLocaleString()}</p>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
         <div className="bg-gradient-to-r from-[#D4AF37]/20 to-transparent border border-[#D4AF37]/30 rounded-2xl p-4">
           <p className="text-[11px] tracking-widest text-[#D4AF37]">QURAN 2:282</p>
           <p className="text-sm text-gray-300 mt-1">"Let a scribe write it between you in justice..."</p>
@@ -116,6 +203,7 @@ export default function VaultPage() {
                   <div className="text-right">
                     <p className={`font-extrabold ${d.type === 'i_owe' ? 'text-red-600' : 'text-green-700'}`}>₦{d.amount.toLocaleString()}</p>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">{d.status}</span>
+                    {d.status === 'pending' && <button onClick={() => markPaid(d.id)} className="block text-[10px] bg-green-600 text-white px-2 py-1 rounded-full mt-1 font-bold ml-auto">Mark Paid ✓</button>}
                   </div>
                 </div>
               ))}
@@ -150,7 +238,6 @@ export default function VaultPage() {
                 <label className="text-[11px] font-bold tracking-widest opacity-60">HOW DID I WRONG SOMEONE? (This will jog your memory)</label>
                 <select value={newDebt.note} onChange={e=>setNewDebt({...newDebt, note: e.target.value})} className="w-full mt-1 p-4 bg-gray-50 rounded-xl border text-sm font-bold outline-none">
                   <option value="">Select to remember...</option>
-                  
                   <optgroup label="💰 MONEY / BUSINESS">
                     <option value="I Owe - Borrowed Money">💰 Borrowed Money & Never Paid</option>
                     <option value="Cheated in Business / Trade">⚖️ Cheated in Business / Trade</option>
@@ -161,7 +248,6 @@ export default function VaultPage() {
                     <option value="Used Item Without Permission">📱 Used Property Without Permission</option>
                     <option value="Damaged Something & Didn't Fix">🔧 Damaged & Didn't Replace</option>
                   </optgroup>
-
                   <optgroup label="🗣️ TONGUE / HEART - Most Forgotten">
                     <option value="Backbiting (Ghibah)">🗣️ Backbiting (Ghibah) - Talked Behind</option>
                     <option value="Slander / False Accusation">🤥 Slander / Lied About Someone</option>
@@ -170,21 +256,18 @@ export default function VaultPage() {
                     <option value="Broke Promise / Betrayed Trust">🤝 Broke Promise / Betrayed Amanah</option>
                     <option value="Envy / Jealousy Led to Harm">👁️ Envy That Caused Harm</option>
                   </optgroup>
-
                   <optgroup label="🤲 PHYSICAL / RIGHTS">
                     <option value="Hit / Hurt Someone Physically">✋ Hit / Hurt Someone</option>
                     <option value="Oppressed Someone With Power">👑 Oppressed With Power</option>
                     <option value="Denied Someone Their Right / Time">⏰ Wasted Time / Denied Right</option>
                     <option value="Haram Look / Harassment">👀 Wrong Look / Harassment</option>
                   </optgroup>
-
                   <optgroup label="❌ CAN'T REACH ANYMORE">
                     <option value="Owe But Can't Find Person">❌ Owe But Can't Find Again</option>
                     <option value="Cheated & Lost Contact">📵 Cheated & Lost Contact</option>
                     <option value="Primary School / Childhood Debt">🎒 Old Childhood Debt</option>
                     <option value="Forgot If I Paid - Record To Be Safe">🤷 Forgot If I Paid - Record To Be Safe</option>
                   </optgroup>
-
                   <optgroup label="📜 OTHER">
                     <option value="They Owe Me - I Forgive">💵 They Owe Me (Record / Forgive)</option>
                     <option value="Kaffarah - Oath / Fast">🤲 Kaffarah</option>
@@ -194,7 +277,6 @@ export default function VaultPage() {
                 </select>
               </div>
 
-              {/* FREE TYPING SPACE */}
               <div className={`p-3 rounded-xl border-2 transition-all ${newDebt.note === "Other - Custom" ? 'border-[#D4AF37] bg-yellow-50/70' : 'border-dashed border-gray-200 bg-gray-50/50'}`}>
                 <label className="text-[11px] font-bold tracking-widest opacity-70">
                   {newDebt.note === "Other - Custom" ? "✍️ TYPE YOUR OWN HAQQ HERE (Required)" : "✍️ Describe Your Case More (Optional but Powerful)"}
