@@ -2,10 +2,103 @@
 import { useState, useMemo, useRef } from 'react'
 import BottomNav from '../../components/BottomNav'
 
-const Input = ({ value, onChange, placeholder }: any) => (
-  <input value={value} onChange={onChange} placeholder={placeholder}
-    className="w-full p-3 bg-white rounded-xl border border-gray-200 text-black placeholder:text-gray-400 font-medium text-sm outline-none focus:border-black" />
-)
+// ===== SMART AMOUNT PARSER - Understands 10k, 10m, Ten Million =====
+const WORD_NUMBERS: any = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100, thousand: 1000, million: 1000000, billion: 1000000000 }
+
+function parseWordNumber(text: string): number {
+  const words = text.toLowerCase().replace(/-/g, ' ').split(/\s+/)
+  let total = 0, current = 0
+  for (const w of words) {
+    if (WORD_NUMBERS[w] === undefined) continue
+    if (w === 'hundred') current = (current || 1) * 100
+    else if (w === 'thousand') { total += (current || 1) * 1000; current = 0 }
+    else if (w === 'million') { total += (current || 1) * 1000000; current = 0 }
+    else if (w === 'billion') { total += (current || 1) * 1000000000; current = 0 }
+    else current += WORD_NUMBERS[w]
+  }
+  return total + current
+}
+
+export function parseSmartAmount(v: string): number {
+  if (!v) return 0
+  let s = String(v).toLowerCase().trim()
+  s = s.replace(/₦|naira|ngn|\s*nairas?/g, '').trim()
+  if (!s) return 0
+  // If it contains letters like million, billion, thousand, k, m, b
+  if (/[a-z]/.test(s)) {
+    // 10.5m, 10k, 500k, 2b
+    const shortMatch = s.match(/^([\d,.]+)\s*([kmb])\b/)
+    if (shortMatch) {
+      const n = parseFloat(shortMatch[1].replace(/,/g, ''))
+      const mult = shortMatch[2] === 'k' ? 1000 : shortMatch[2] === 'm' ? 1000000 : 1000000000
+      return Math.round(n * mult)
+    }
+    // 10 million, 1.5 billion, 500 thousand
+    const longMatch = s.match(/([\d,.]+)\s*(thousand|million|billion)/)
+    if (longMatch) {
+      const n = parseFloat(longMatch[1].replace(/,/g, ''))
+      const mult = longMatch[2] === 'thousand' ? 1000 : longMatch[2] === 'million' ? 1000000 : 1000000000
+      return Math.round(n * mult)
+    }
+    // Ten million, twenty thousand, one million five hundred thousand
+    if (/million|billion|thousand|hundred/.test(s)) {
+      // Handle "one million five hundred thousand" = 1,500,000
+      const parts = s.split(/million|billion|thousand/)
+      let result = 0
+      if (s.includes('billion')) {
+        const before = s.split('billion')[0]
+        result += parseWordNumber(before) * 1000000000
+        const after = s.split('billion')[1] || ''
+        if (after.includes('million')) {
+          result += parseWordNumber(after.split('million')[0]) * 1000000
+          const rest = after.split('million')[1] || ''
+          if (rest.includes('thousand')) result += parseWordNumber(rest.split('thousand')[0]) * 1000
+          else result += parseWordNumber(rest)
+        } else if (after.includes('thousand')) {
+          result += parseWordNumber(after.split('thousand')[0]) * 1000
+        } else result += parseWordNumber(after)
+        return result
+      }
+      if (s.includes('million')) {
+        const before = s.split('million')[0]
+        result += parseWordNumber(before) * 1000000
+        const after = s.split('million')[1] || ''
+        if (after.includes('thousand')) {
+          result += parseWordNumber(after.split('thousand')[0]) * 1000
+          result += parseWordNumber(after.split('thousand')[1] || '')
+        } else result += parseWordNumber(after)
+        return result
+      }
+      if (s.includes('thousand')) {
+        const before = s.split('thousand')[0]
+        result += parseWordNumber(before) * 1000
+        result += parseWordNumber(s.split('thousand')[1] || '')
+        return result
+      }
+      return parseWordNumber(s)
+    }
+    // Just words like "ten" , "fifty"
+    if (/^[a-z\s-]+$/.test(s)) return parseWordNumber(s)
+  }
+  return parseFloat(s.replace(/[^0-9.]/g, '')) || 0
+}
+
+const formatMoney = (n: number) => '₦' + Math.round(n).toLocaleString()
+
+// Smart Input - formats to 10,000,000 on blur, accepts 10m / Ten million while typing
+const Input = ({ value, onChange, placeholder }: any) => {
+  const handleBlur = (e: any) => {
+    const parsed = parseSmartAmount(e.target.value)
+    if (parsed > 0) {
+      // Show formatted version
+      onChange({ target: { value: parsed.toLocaleString() } })
+    }
+  }
+  return (
+    <input value={value} onChange={onChange} onBlur={handleBlur} placeholder={placeholder}
+      className="w-full p-3 bg-white rounded-xl border border-gray-200 text-black placeholder:text-gray-400 font-medium text-sm outline-none focus:border-black" />
+  )
+}
 const Label = ({ children }: any) => (
   <div className="text-[11px] font-bold tracking-wider text-gray-500 uppercase mb-2 mt-5">{children}</div>
 )
@@ -17,11 +110,14 @@ const Q = ({ title, children }: any) => (
 const AddBtn = ({ onClick, label }: any) => (
   <button onClick={onClick} className="mt-3 w-full py-2.5 rounded-xl border-2 border-dashed border-gray-300 text-black font-bold text-[13px] bg-gray-50">+ Add Another {label}</button>
 )
+const Hint = () => (
+  <p className="text-[11px] text-gray-500 mt-1">You can type 10,000,000 or 10m or 10 million or Ten million - all work.</p>
+)
 
 export default function WasiyyahPage() {
   const [step, setStep] = useState(1)
 
-  // ===== STEP 1 - ASSETS =====
+  // STEP 1
   const [cashHome, setCashHome] = useState('')
   const [banks, setBanks] = useState([{ name: '', amt: '' }])
   const [properties, setProperties] = useState([{ name: '', amt: '' }])
@@ -48,17 +144,16 @@ export default function WasiyyahPage() {
     </div>
   )
 
-  // ===== STEP 2 - DEBTS =====
+  // STEP 2
   const [loans, setLoans] = useState([{ from: '', amt: '' }])
   const [owing, setOwing] = useState([{ person: '', amt: '' }])
   const [kaffarahAmt, setKaffarahAmt] = useState('')
   const [funeralAmt, setFuneralAmt] = useState('500000')
 
-  // ===== STEP 3 - FAMILY - FIXED: YOUR GENDER, NOT DECEASED =====
+  // STEP 3 - YOUR GENDER
   const [myGender, setMyGender] = useState<'male' | 'female'>('male')
   const [isMarried, setIsMarried] = useState('yes')
   const [wivesCount, setWivesCount] = useState('1')
-  const [husbandAlive, setHusbandAlive] = useState('yes')
   const [sons, setSons] = useState('0')
   const [daughters, setDaughters] = useState('0')
   const [fatherAlive, setFatherAlive] = useState('no')
@@ -74,12 +169,12 @@ export default function WasiyyahPage() {
   const [maternalSisters, setMaternalSisters] = useState('0')
   const [paternalUncles, setPaternalUncles] = useState('0')
 
-  // ===== STEP 4 =====
+  // STEP 4
   const [wasiyyahTo, setWasiyyahTo] = useState('')
   const [wasiyyahAmt, setWasiyyahAmt] = useState('')
   const [message, setMessage] = useState('')
 
-  // ===== STEP 5 - VIDEO VERIFICATION & LEGALIZATION =====
+  // STEP 5
   const [fullName, setFullName] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [location, setLocation] = useState('')
@@ -97,7 +192,7 @@ export default function WasiyyahPage() {
   const videoRef = useRef<any>(null)
   const mediaRecorderRef = useRef<any>(null)
 
-  const num = (v: string) => parseFloat(String(v || '').replace(/[^0-9]/g, '')) || 0
+  const num = (v: string) => parseSmartAmount(v)
   const sumList = (l: any) => l.reduce((s: number, x: any) => s + num(x.amt), 0)
 
   const totalAssets = num(cashHome) + sumList(banks) + sumList(properties) + sumList(cars) + sumList(businesses) + sumList(others)
@@ -105,9 +200,8 @@ export default function WasiyyahPage() {
   const net = totalAssets - totalDebts
   const maxWasiyyah = Math.max(0, net / 3)
   const faraidPool = Math.max(0, net - num(wasiyyahAmt))
-  const fmt = (n: number) => '₦' + Math.round(n).toLocaleString()
+  const fmt = formatMoney
 
-  // Video Recording
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
@@ -118,24 +212,18 @@ export default function WasiyyahPage() {
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: 'video/webm' })
         const url = URL.createObjectURL(blob)
-        setVideoUrl(url)
-        setVideoFile(blob)
+        setVideoUrl(url); setVideoFile(blob)
         stream.getTracks().forEach((t: any) => t.stop())
       }
-      mediaRecorderRef.current = recorder
-      recorder.start()
-      setIsRecording(true)
+      mediaRecorderRef.current = recorder; recorder.start(); setIsRecording(true)
     } catch { alert('Please allow camera and microphone access to record your verification video.') }
   }
-  const stopRecording = () => {
-    if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); setIsRecording(false) }
-  }
+  const stopRecording = () => { if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); setIsRecording(false) } }
   const handleVideoUpload = (e: any) => {
     const f = e.target.files[0]
     if (f) { setVideoFile(f); setVideoUrl(URL.createObjectURL(f)) }
   }
 
-  // ===== FARAID - BASED ON YOUR GENDER =====
   const faraid = useMemo(() => {
     const out: any[] = []
     if (faraidPool <= 0) return out
@@ -149,16 +237,14 @@ export default function WasiyyahPage() {
     const take = (name: string, amt: number, pct: string) => {
       if (amt <= 0) return
       const real = Math.min(amt, pool)
-      out.push({ name, amt: real, pct })
-      pool -= real
+      out.push({ name, amt: real, pct }); pool -= real
     }
-    // Spouse - Based on YOUR gender
     if (isMarried === 'yes') {
       if (myGender === 'male') {
         const w = parseInt(wivesCount) || 1
         take(w > 1 ? `Wives (${w} share together)` : 'Wife', hasChildren ? faraidPool * 0.125 : faraidPool * 0.25, hasChildren ? '1/8' : '1/4')
       } else {
-        if (husbandAlive === 'yes') take('Husband', hasChildren ? faraidPool * 0.25 : faraidPool * 0.5, hasChildren ? '1/4' : '1/2')
+        take('Husband', hasChildren ? faraidPool * 0.25 : faraidPool * 0.5, hasChildren ? '1/4' : '1/2')
       }
     }
     if (hasMother) {
@@ -169,11 +255,8 @@ export default function WasiyyahPage() {
     } else {
       if (pGrandMother === 'yes' || mGrandMother === 'yes') take('Grandmother', faraidPool / 6, '1/6')
     }
-    if (hasFather) {
-      if (hasChildren) take('Father', faraidPool / 6, '1/6')
-    } else if (hasGrandFather && !hasFather) {
-      if (hasChildren) take('Paternal Grandfather', faraidPool / 6, '1/6')
-    }
+    if (hasFather) { if (hasChildren) take('Father', faraidPool / 6, '1/6') }
+    else if (hasGrandFather && !hasFather) { if (hasChildren) take('Paternal Grandfather', faraidPool / 6, '1/6') }
     if (hasChildren) {
       const units = s * 2 + d
       const perUnit = pool / units
@@ -209,14 +292,51 @@ export default function WasiyyahPage() {
     else if (pool > 0 && (parseInt(paternalUncles) || 0) > 0) take((parseInt(paternalUncles) || 0) > 1 ? `Paternal Uncles (${paternalUncles})` : 'Paternal Uncle', pool, 'Residuary')
     else if (pool > 0 && out.length > 0) take('Remaining to Nearest Residuary Heir', pool, 'Residuary')
     return out
-  }, [faraidPool, myGender, isMarried, wivesCount, husbandAlive, sons, daughters, fatherAlive, motherAlive, pGrandFather, pGrandMother, mGrandMother, fullBrothers, fullSisters, paternalBrothers, paternalSisters, maternalBrothers, maternalSisters, paternalUncles])
+  }, [faraidPool, myGender, isMarried, wivesCount, sons, daughters, fatherAlive, motherAlive, pGrandFather, pGrandMother, mGrandMother, fullBrothers, fullSisters, paternalBrothers, paternalSisters, maternalBrothers, maternalSisters, paternalUncles])
 
   const saveAll = () => {
     if (!declaration || !soundMind) { alert('Please confirm both declarations before saving.'); return }
     if (!witness1Name || !witness2Name) { alert('Please add two witnesses to legalize your Wasiyyah.'); return }
-    const data = { fullName, myGender, totalAssets, totalDebts, net, wasiyyahAmt, wasiyyahTo, message, witness1Name, witness2Name, executorName, location, savedAt: new Date().toISOString(), videoVerified: !!videoFile }
+    const data = { fullName, myGender, totalAssets, totalDebts, net, wasiyyahAmt, wasiyyahTo, message, witness1Name, witness2Name, executorName, location, savedAt: new Date().toISOString(), videoVerified: !!videoFile, faraid }
     localStorage.setItem('haqq-wasiyyah', JSON.stringify(data))
-    alert('Your Wasiyyah has been saved and verified successfully!')
+    alert('Your Wasiyyah has been saved and verified successfully! You can now download the PDF.')
+  }
+
+  // ===== DOWNLOAD PDF =====
+  const downloadPDF = () => {
+    const date = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+    const assetsHtml = [...banks.map(b => `<tr><td>Bank - ${b.name || 'Bank'}</td><td style="text-align:right">${fmt(num(b.amt))}</td></tr>`), ...properties.map(p => `<tr><td>Property - ${p.name || 'Property'}</td><td style="text-align:right">${fmt(num(p.amt))}</td></tr>`), ...cars.map(c => `<tr><td>Car - ${c.name || 'Car'}</td><td style="text-align:right">${fmt(num(c.amt))}</td></tr>`), `<tr><td>Cash at Home</td><td style="text-align:right">${fmt(num(cashHome))}</td></tr>`].join('')
+    const debtsHtml = [...loans.map(l => `<tr><td>Loan from ${l.from || 'Lender'}</td><td style="text-align:right">${fmt(num(l.amt))}</td></tr>`), ...owing.map(o => `<tr><td>Owed to ${o.person || 'Person'}</td><td style="text-align:right">${fmt(num(o.amt))}</td></tr>`), `<tr><td>Kaffarah</td><td style="text-align:right">${fmt(num(kaffarahAmt))}</td></tr><tr><td>Funeral Expenses</td><td style="text-align:right">${fmt(num(funeralAmt))}</td></tr>`].join('')
+    const faraidHtml = faraid.map((f: any) => `<tr><td>${f.name} (${f.pct})</td><td style="text-align:right">${fmt(f.amt)}</td></tr>`).join('') || '<tr><td colspan="2">No heirs listed</td></tr>'
+
+    const html = `
+    <html><head><title>Wasiyyah - ${fullName || 'HAQQ'}</title><style>
+      body{font-family:Georgia,serif;max-width:750px;margin:0 auto;padding:40px;color:#111;line-height:1.6}
+      h1{text-align:center;font-size:32px;letter-spacing:4px;margin:0} .sub{text-align:center;color:#555;font-size:13px}
+      h2{border-bottom:2px solid #0A1931;padding-bottom:6px;margin-top:30px;font-size:18px}
+      table{width:100%;border-collapse:collapse;margin-top:10px} td{padding:8px 4px;border-bottom:1px solid #eee;font-size:14px}
+      .total{font-weight:bold} .box{background:#f7f7f7;padding:16px;border-radius:10px;margin-top:10px}
+      .sig{margin-top:60px;display:flex;justify-content:space-between} .line{border-top:1px solid #000;width:220px;padding-top:6px;text-align:center;font-size:12px}
+      @media print{body{padding:20px}}
+    </style></head><body>
+      <h1>HAQQ</h1><p class="sub">ISLAMIC WILL & TESTAMENT - WASIYYAH</p>
+      <p style="text-align:center;font-size:13px">Made on ${date} in ${location || 'Nigeria'}</p>
+      <div class="box"><b>I, ${fullName || '[Full Name]'}</b>, being of sound mind, do hereby make this Wasiyyah willingly and without pressure. I bear witness that there is no god but Allah and Muhammad (peace be upon him) is His Messenger.</div>
+      <h2>1. My Assets</h2><table>${assetsHtml}<tr class="total"><td>Total Assets</td><td style="text-align:right">${fmt(totalAssets)}</td></tr></table>
+      <h2>2. My Debts & Rights</h2><table>${debtsHtml}<tr class="total"><td>Total Debts</td><td style="text-align:right">${fmt(totalDebts)}</td></tr><tr class="total"><td>Net Estate</td><td style="text-align:right">${fmt(net)}</td></tr></table>
+      <h2>3. Wasiyyah (One-Third)</h2><p>I bequeath <b>${fmt(num(wasiyyahAmt))}</b> (maximum ${fmt(maxWasiyyah)}) to <b>${wasiyyahTo || 'Charity / Non-heir'}</b>.</p>
+      <h2>4. Faraid Distribution</h2><table>${faraidHtml}<tr class="total"><td>Total for Faraid</td><td style="text-align:right">${fmt(faraidPool)}</td></tr></table>
+      <h2>5. Final Message</h2><p>${message || 'May Allah forgive me and grant my family patience.'}</p>
+      <h2>6. Executor & Witnesses</h2>
+      <p><b>Executor:</b> ${executorName || '-'} (${executorPhone || '-'})<br/><b>Witness 1:</b> ${witness1Name || '-'} (${witness1Phone || '-'})<br/><b>Witness 2:</b> ${witness2Name || '-'} (${witness2Phone || '-'})</p>
+      <p><b>Video Verification:</b> ${videoUrl ? 'Completed - Video recorded and attached in app' : 'Not recorded'}<br/><b>Declaration:</b> I confirm this Wasiyyah was made in sound mind and willingly.</p>
+      <div class="sig"><div><div class="line">Signature of Testator<br/>${fullName || ''}<br/>Date: ${date}</div></div><div><div class="line">Witness 1 Signature<br/>Date: ${date}</div></div></div>
+      <div class="sig"><div><div class="line">Witness 2 Signature<br/>Date: ${date}</div></div><div><div class="line">Executor Signature<br/>Date: ${date}</div></div></div>
+      <p style="font-size:11px;color:#777;margin-top:30px;text-align:center">Generated by HAQQ App - Based on Qur&apos;an 4:11-12. For full legal effect, please sign before a lawyer, Sharia Court or Notary.</p>
+      <script>window.onload=()=>window.print()</script>
+    </body></html>`
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close() }
   }
 
   return (
@@ -245,18 +365,20 @@ export default function WasiyyahPage() {
       <div className="max-w-[520px] mx-auto px-4 mt-4 space-y-4">
         {step === 1 && (
           <Q title="Step 1 - Declare Your Assets">
+            <p className="text-[12px] text-gray-500 mt-1">Example: Type 10 million or 10m or Ten million - it will become ₦10,000,000.</p>
             <Label>Cash at Home</Label>
-            <Input value={cashHome} onChange={(e: any) => setCashHome(e.target.value)} placeholder="Cash at home ₦" />
+            <Input value={cashHome} onChange={(e: any) => setCashHome(e.target.value)} placeholder="e.g. 500k or 500,000 or Five hundred thousand" />
+            <Hint />
             <Label>Banks - Add as many as you have</Label>
-            {renderList(banks, setBanks, 'Bank Name - e.g. GTBank', 'Bank Amount ₦', 'Bank')}
+            {renderList(banks, setBanks, 'Bank Name - e.g. GTBank', 'e.g. 10m or 10 million', 'Bank')}
             <Label>Properties - Add as many as you have</Label>
-            {renderList(properties, setProperties, 'Property - e.g. House in Ibadan', 'Property Value ₦', 'Property')}
+            {renderList(properties, setProperties, 'Property - e.g. House in Ibadan', 'e.g. 50m or 50 million', 'Property')}
             <Label>Cars - Add as many as you have</Label>
-            {renderList(cars, setCars, 'Car - e.g. Toyota Camry', 'Car Value ₦', 'Car')}
+            {renderList(cars, setCars, 'Car - e.g. Toyota Camry', 'e.g. 5m or 5 million', 'Car')}
             <Label>Businesses</Label>
-            {renderList(businesses, setBusinesses, 'Business Name', 'Business Value ₦', 'Business')}
+            {renderList(businesses, setBusinesses, 'Business Name', 'e.g. 2m', 'Business')}
             <Label>Other Assets</Label>
-            {renderList(others, setOthers, 'Other Asset - e.g. Gold', 'Other Value ₦', 'Other Asset')}
+            {renderList(others, setOthers, 'Other Asset - e.g. Gold', 'e.g. 1m', 'Other Asset')}
             <div className="mt-5 bg-gray-50 rounded-xl p-3 flex justify-between"><span className="font-bold text-sm">Total Assets</span><span className="font-black">{fmt(totalAssets)}</span></div>
             <button onClick={() => setStep(2)} className="w-full mt-4 bg-[#0A1931] text-white py-3.5 rounded-full font-bold">Next - Debts</button>
           </Q>
@@ -268,7 +390,7 @@ export default function WasiyyahPage() {
             {loans.map((it: any, i: number) => (
               <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 mt-2 items-center">
                 <Input value={it.from} onChange={(e: any) => { const n = [...loans]; n[i].from = e.target.value; setLoans(n) }} placeholder="Loan From - e.g. GTBank, Friend" />
-                <Input value={it.amt} onChange={(e: any) => { const n = [...loans]; n[i].amt = e.target.value; setLoans(n) }} placeholder="Loan Amount ₦" />
+                <Input value={it.amt} onChange={(e: any) => { const n = [...loans]; n[i].amt = e.target.value; setLoans(n) }} placeholder="e.g. 500k" />
                 {loans.length > 1 && <button onClick={() => setLoans(loans.filter((_: any, idx: number) => idx !== i))} className="text-red-500 font-black px-1">×</button>}
               </div>
             ))}
@@ -277,15 +399,15 @@ export default function WasiyyahPage() {
             {owing.map((it: any, i: number) => (
               <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 mt-2 items-center">
                 <Input value={it.person} onChange={(e: any) => { const n = [...owing]; n[i].person = e.target.value; setOwing(n) }} placeholder="Person's Name - e.g. Musa" />
-                <Input value={it.amt} onChange={(e: any) => { const n = [...owing]; n[i].amt = e.target.value; setOwing(n) }} placeholder="Amount Owed ₦" />
+                <Input value={it.amt} onChange={(e: any) => { const n = [...owing]; n[i].amt = e.target.value; setOwing(n) }} placeholder="e.g. 100k" />
                 {owing.length > 1 && <button onClick={() => setOwing(owing.filter((_: any, idx: number) => idx !== i))} className="text-red-500 font-black px-1">×</button>}
               </div>
             ))}
             <AddBtn onClick={() => setOwing([...owing, { person: '', amt: '' }])} label="Person You Owe" />
             <Label>Kaffarah / Funeral Expenses</Label>
             <div className="grid grid-cols-2 gap-3">
-              <Input value={kaffarahAmt} onChange={(e: any) => setKaffarahAmt(e.target.value)} placeholder="Kaffarah ₦" />
-              <Input value={funeralAmt} onChange={(e: any) => setFuneralAmt(e.target.value)} placeholder="Funeral Expenses ₦" />
+              <Input value={kaffarahAmt} onChange={(e: any) => setKaffarahAmt(e.target.value)} placeholder="e.g. 200k" />
+              <Input value={funeralAmt} onChange={(e: any) => setFuneralAmt(e.target.value)} placeholder="e.g. 500k" />
             </div>
             <div className="mt-5 space-y-2 text-sm font-medium bg-gray-50 p-3 rounded-xl">
               <div className="flex justify-between"><span>Total Assets</span><span>{fmt(totalAssets)}</span></div>
@@ -303,25 +425,18 @@ export default function WasiyyahPage() {
         {step === 3 && (
           <Q title="Step 3 - My Family (Faraid)">
             <p className="text-[13px] text-gray-600 mt-1 leading-relaxed">This Wasiyyah is for you. Please select your own gender so your spouse and family shares can be calculated correctly.</p>
-
             <Label>What Is Your Gender?</Label>
             <div className="flex gap-2">
               <button onClick={() => setMyGender('male')} className={`flex-1 py-3 rounded-xl border font-bold ${myGender === 'male' ? 'bg-black text-white' : 'bg-white text-black'}`}>I Am Male</button>
               <button onClick={() => setMyGender('female')} className={`flex-1 py-3 rounded-xl border font-bold ${myGender === 'female' ? 'bg-black text-white' : 'bg-white text-black'}`}>I Am Female</button>
             </div>
-
             <Label>{myGender === 'male' ? 'My Wives - How Many Wives Do You Have?' : 'My Husband'}</Label>
             <div className="flex gap-2">
               <button onClick={() => setIsMarried('yes')} className={`flex-1 py-2.5 rounded-xl border font-bold text-sm ${isMarried === 'yes' ? 'bg-black text-white' : 'bg-white text-black'}`}>I Am Married</button>
               <button onClick={() => setIsMarried('no')} className={`flex-1 py-2.5 rounded-xl border font-bold text-sm ${isMarried === 'no' ? 'bg-black text-white' : 'bg-white text-black'}`}>I Am Not Married</button>
             </div>
             {isMarried === 'yes' && myGender === 'male' && <div className="mt-3"><Input value={wivesCount} onChange={(e: any) => setWivesCount(e.target.value)} placeholder="How many wives do you have? 1 to 4" /><p className="text-[11px] text-gray-500 mt-1">If you have more than one wife, they will share one portion together.</p></div>}
-            {isMarried === 'yes' && myGender === 'female' && (
-              <div className="mt-3">
-                <p className="text-[13px] font-medium text-black bg-gray-50 p-3 rounded-xl">Your husband will receive 1/4 if you have children, or 1/2 if you have no children.</p>
-              </div>
-            )}
-
+            {isMarried === 'yes' && myGender === 'female' && <div className="mt-3"><p className="text-[13px] font-medium text-black bg-gray-50 p-3 rounded-xl">Your husband will receive 1/4 if you have children, or 1/2 if you have no children.</p></div>}
             <Label>My Children</Label>
             <div className="grid grid-cols-2 gap-3">
               <Input value={sons} onChange={(e: any) => setSons(e.target.value)} placeholder="Number of Sons - 0" />
@@ -366,12 +481,12 @@ export default function WasiyyahPage() {
           <>
             <Q title="Step 4 - Wasiyyah (Maximum One-Third)">
               <p className="text-[13px] text-gray-600 mt-1 leading-relaxed">
-                {net <= 0
-                  ? "Please enter your assets and debts in Steps 1 and 2 to calculate how much you can allocate as Wasiyyah."
+                {net <= 0 ? "Please enter your assets and debts in Steps 1 and 2 to calculate how much you can allocate as Wasiyyah."
                   : `Based on your Net Estate of ${fmt(net)}, you may allocate up to ${fmt(maxWasiyyah)} (one-third) as Wasiyyah to non-heirs or charity. The remaining ${fmt(faraidPool)} will be distributed according to Faraid.`}
               </p>
               <div className="mt-3"><Input value={wasiyyahTo} onChange={(e: any) => setWasiyyahTo(e.target.value)} placeholder="Beneficiary - e.g. Mosque, Orphanage, Charity" /></div>
-              <div className="mt-3"><Input value={wasiyyahAmt} onChange={(e: any) => setWasiyyahAmt(e.target.value)} placeholder="Wasiyyah Amount ₦" /></div>
+              <div className="mt-3"><Input value={wasiyyahAmt} onChange={(e: any) => setWasiyyahAmt(e.target.value)} placeholder="Wasiyyah Amount - e.g. 1m or 1 million" /></div>
+              <Hint />
               {num(wasiyyahAmt) > maxWasiyyah && <p className="text-red-600 text-[12px] font-bold mt-2">This amount exceeds one-third of your Net Estate. Please reduce it to {fmt(maxWasiyyah)} or less.</p>}
               <div className="mt-4 bg-gray-50 rounded-xl p-3 space-y-2 text-sm text-black">
                 <div className="flex justify-between"><span>Total Assets</span><span className="font-bold">{fmt(totalAssets)}</span></div>
@@ -405,14 +520,12 @@ export default function WasiyyahPage() {
           <>
             <Q title="Step 5 - Video Verification & Legalization">
               <p className="text-[13px] text-gray-600 mt-1 leading-relaxed">To make your Wasiyyah valid and difficult to dispute, please record a short video confirming this is your Wasiyyah, and add two witnesses and an executor.</p>
-
               <Label>Your Full Name</Label>
               <Input value={fullName} onChange={(e: any) => setFullName(e.target.value)} placeholder="Your Full Name as on ID" />
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <Input value={dateOfBirth} onChange={(e: any) => setDateOfBirth(e.target.value)} placeholder="Date of Birth" />
                 <Input value={location} onChange={(e: any) => setLocation(e.target.value)} placeholder="City / State - e.g. Lagos" />
               </div>
-
               <Label>Video Verification - Record Yourself</Label>
               <div className="bg-black rounded-2xl overflow-hidden">
                 <video ref={videoRef} playsInline muted controls={!!videoUrl} src={videoUrl || undefined} className="w-full h-[220px] object-cover bg-black" />
@@ -423,19 +536,15 @@ export default function WasiyyahPage() {
                 <label className="flex-1 text-center bg-gray-100 py-3 rounded-full font-bold text-sm cursor-pointer text-black">Upload Video<input type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" /></label>
               </div>
               {videoUrl && <p className="text-green-600 text-[12px] font-bold mt-2">✓ Video verification recorded.</p>}
-
               <Label>Witness 1 - Must Be An Adult Muslim</Label>
               <Input value={witness1Name} onChange={(e: any) => setWitness1Name(e.target.value)} placeholder="Witness 1 Full Name" />
               <div className="mt-2"><Input value={witness1Phone} onChange={(e: any) => setWitness1Phone(e.target.value)} placeholder="Witness 1 Phone Number" /></div>
-
               <Label>Witness 2 - Must Be An Adult Muslim</Label>
               <Input value={witness2Name} onChange={(e: any) => setWitness2Name(e.target.value)} placeholder="Witness 2 Full Name" />
               <div className="mt-2"><Input value={witness2Phone} onChange={(e: any) => setWitness2Phone(e.target.value)} placeholder="Witness 2 Phone Number" /></div>
-
               <Label>Executor - Person Who Will Carry Out Your Wasiyyah</Label>
               <Input value={executorName} onChange={(e: any) => setExecutorName(e.target.value)} placeholder="Executor Full Name" />
               <div className="mt-2"><Input value={executorPhone} onChange={(e: any) => setExecutorPhone(e.target.value)} placeholder="Executor Phone Number" /></div>
-
               <Label>Declaration</Label>
               <label className="flex gap-3 items-start bg-gray-50 p-3 rounded-xl cursor-pointer">
                 <input type="checkbox" checked={soundMind} onChange={(e) => setSoundMind(e.target.checked)} className="mt-1 w-4 h-4 accent-black" />
@@ -445,7 +554,6 @@ export default function WasiyyahPage() {
                 <input type="checkbox" checked={declaration} onChange={(e) => setDeclaration(e.target.checked)} className="mt-1 w-4 h-4 accent-black" />
                 <span className="text-[13px] font-medium leading-relaxed">I confirm that all the information in this Wasiyyah is true and correct, and I want it to be carried out according to Islamic Law after my death.</span>
               </label>
-
               <div className="mt-4 bg-yellow-50 p-3 rounded-xl">
                 <p className="text-[12px] font-bold">Legal Note</p>
                 <p className="text-[12px] text-gray-600 leading-relaxed mt-1">Your video, witnesses, and declaration make this Wasiyyah stronger. For full legal effect in Nigeria, we recommend printing it and having it signed before a lawyer or at a Sharia Court / Notary. You can download / print after saving.</p>
@@ -463,9 +571,11 @@ export default function WasiyyahPage() {
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <button onClick={() => setStep(4)} className="flex-1 py-3.5 rounded-full bg-white text-black font-bold">Back</button>
-              <button onClick={saveAll} className="flex-[2] py-3.5 rounded-full bg-black text-white font-bold">Save & Legalize My Wasiyyah</button>
+            <div className="flex flex-col gap-3">
+              <button onClick={saveAll} className="w-full py-3.5 rounded-full bg-black text-white font-bold">Save & Legalize My Wasiyyah</button>
+              <button onClick={downloadPDF} className="w-full py-3.5 rounded-full bg-[#0A1931] text-white font-bold border border-white/20">📄 Download Wasiyyah PDF</button>
+              <button onClick={() => setStep(4)} className="w-full py-3 rounded-full bg-white text-black font-bold">Back</button>
+              <p className="text-center text-[11px] text-white/60">PDF will open in a new tab - Choose Save as PDF to download it.</p>
             </div>
           </>
         )}
@@ -473,4 +583,4 @@ export default function WasiyyahPage() {
       <BottomNav />
     </div>
   )
-                                               }
+          }
