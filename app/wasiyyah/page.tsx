@@ -19,7 +19,7 @@ function parseWordNumber(text: string): number {
   return total + current
 }
 
-export function parseSmartAmount(v: string): number {
+function parseSmartAmount(v: string): number {
   if (!v) return 0
   let s = String(v).toLowerCase().trim()
   s = s.replace(/₦|naira|ngn|\s*nairas?/g, '').trim()
