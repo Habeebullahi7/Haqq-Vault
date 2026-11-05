@@ -623,4 +623,4 @@ export default function WasiyyahPage() {
       <BottomNav />
     </div>
   )
-      }
+    }
