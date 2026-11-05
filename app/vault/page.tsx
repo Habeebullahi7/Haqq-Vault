@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
+import BottomNav from "../../components/BottomNav";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,8 +24,6 @@ export default function VaultPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [newDebt, setNewDebt] = useState({ person: '', amount: '', type: 'i_owe', due_date: '', note: '', customNote: '' });
   const [hadith, setHadith] = useState(hadiths[0]);
-
-  // ===== WASIYYAH VAULT =====
   const [wasiyyah, setWasiyyah] = useState<any>(null);
   const [wasiyyahStatus, setWasiyyahStatus] = useState('DRAFT');
   const [versions, setVersions] = useState<any[]>([]);
@@ -46,7 +45,6 @@ export default function VaultPage() {
   }, []);
 
   async function fetchWasiyyah() {
-    // 1. Try Supabase first (real DB)
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -54,14 +52,12 @@ export default function VaultPage() {
         if (data) {
           setWasiyyah(data);
           setWasiyyahStatus(data.vault_status || 'DRAFT');
-          // Fetch versions
           const { data: vers } = await supabase.from('wasiyyah_versions').select('*').eq('wasiyyah_id', data.id).order('created_at', { ascending: false });
           if (vers) setVersions(vers);
           return;
         }
       }
     } catch {}
-    // 2. Fallback to localStorage (for now, before Auth is fully set up)
     const local = localStorage.getItem("haqq-wasiyyah");
     if (local) {
       const parsed = JSON.parse(local);
@@ -80,11 +76,9 @@ export default function VaultPage() {
   async function addDebt() {
     if (!newDebt.person || !newDebt.note) { alert("Fill person and type of Haqq"); return; }
     if (newDebt.note === "Other - Custom" && !newDebt.customNote) { alert("Please type your custom Haqq in the box"); return; }
-    
     const finalNote = newDebt.note === "Other - Custom" 
       ? newDebt.customNote 
       : newDebt.note + (newDebt.customNote ? ` - ${newDebt.customNote}` : '');
-
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('debts').insert([{ 
       person: newDebt.person,
@@ -109,22 +103,23 @@ export default function VaultPage() {
   const theyOwe = debts.filter(d => d.type === 'they_owe' && d.status === 'pending').reduce((s, d) => s + d.amount, 0);
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white pb-28">
-      <div className="px-6 py-5 flex justify-between items-center border-b border-white/10 sticky top-0 bg-[#0f172a]/90 backdrop-blur z-20">
+    <div className="min-h-screen bg-[#0f172a] text-white pb-[150px]">
+      {/* TOP HEADER */}
+      <div className="px-6 py-5 flex justify-between items-center border-b border-white/10 sticky top-0 bg-[#0f172a]/95 backdrop-blur z-20">
         <h1 className="font-bold text-lg tracking-widest">HAQQ VAULT <span className="text-[#D4AF37]">🔒</span></h1>
         <a href="/wasiyyah" className="text-[11px] bg-[#D4AF37] text-[#0f172a] px-3 py-1.5 rounded-full font-bold no-underline">Wasiyyah</a>
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
-        {/* ===== WASIYYAH VAULT CARD - NEW ===== */}
+        {/* WASIYYAH VAULT CARD */}
         <div className="bg-white text-[#0f172a] rounded-[20px] p-5 shadow-xl border-2 border-[#D4AF37]/40">
-          <div className="flex justify-between items-start">
+          <div className="flex justify-between items-start gap-3">
             <div>
               <p className="text-[10px] tracking-widest text-[#D4AF37] font-bold">📜 MY WASIYYAH - ISLAMIC WILL</p>
               <h2 className="font-extrabold text-[18px] mt-1">{wasiyyah ? (wasiyyah.full_name || 'My Wasiyyah') : 'No Wasiyyah Saved Yet'}</h2>
             </div>
             {wasiyyah && (
-              <span className={`text-[10px] px-2 py-1 rounded-full font-bold whitespace-nowrap ${wasiyyahStatus === 'ACTIVE_LOCKED' ? 'bg-green-100 text-green-700' : wasiyyahStatus === 'RELEASED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+              <span className={`text-[10px] px-2 py-1 rounded-full font-bold whitespace-nowrap shrink-0 ${wasiyyahStatus === 'ACTIVE_LOCKED' ? 'bg-green-100 text-green-700' : wasiyyahStatus === 'RELEASED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                 {wasiyyahStatus === 'ACTIVE_LOCKED' ? '🔒 LOCKED & SAFE' : wasiyyahStatus === 'EDITING' ? '🔓 EDITING' : wasiyyahStatus === 'RELEASED' ? '⚠️ RELEASED' : '📝 DRAFT'}
               </span>
             )}
@@ -143,7 +138,7 @@ export default function VaultPage() {
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">EXECUTOR</p><p className="font-bold truncate">{wasiyyah.executor_name || wasiyyah.executorName || '-'}</p></div>
                 <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">LAWYER</p><p className="font-bold truncate">{wasiyyah.lawyer_choice === 'haqq' ? 'HAQQ Lawyer' : wasiyyah.lawyer_name || wasiyyah.lawyerName || 'No Lawyer Yet'}</p></div>
               </div>
-              <p className="text-[11px] text-gray-500 mt-3 bg-yellow-50 p-3 rounded-xl">
+              <p className="text-[11px] text-gray-500 mt-3 bg-yellow-50 p-3 rounded-xl leading-relaxed">
                 🔒 Locked: Only you can unlock to edit (PIN + OTP). Executor / Lawyer can only access after death verification.
                 {versions.length > 0 && <><br/>Version History: {versions.length} version(s) saved.</>}
               </p>
@@ -151,6 +146,7 @@ export default function VaultPage() {
                 <a href="/wasiyyah" className="flex-1 text-center bg-[#0f172a] text-white py-3 rounded-full font-bold text-sm no-underline">Unlock To Edit</a>
                 <a href="/report-death" className="flex-1 text-center bg-red-600 text-white py-3 rounded-full font-bold text-sm no-underline">Report Death</a>
               </div>
+              <a href="/lawyer" className="block text-center mt-2 bg-yellow-400 text-black py-3 rounded-full font-bold text-sm no-underline">⚖️ Go To Lawyer Page</a>
               {versions.length > 0 && (
                 <div className="mt-3 pt-3 border-t">
                   <p className="text-[11px] font-bold">VERSION HISTORY</p>
@@ -165,7 +161,7 @@ export default function VaultPage() {
 
         <div className="bg-gradient-to-r from-[#D4AF37]/20 to-transparent border border-[#D4AF37]/30 rounded-2xl p-4">
           <p className="text-[11px] tracking-widest text-[#D4AF37]">QURAN 2:282</p>
-          <p className="text-sm text-gray-300 mt-1">"Let a scribe write it between you in justice..."</p>
+          <p className="text-sm text-gray-300 mt-1">&quot;Let a scribe write it between you in justice...&quot;</p>
         </div>
 
         <div className="bg-white text-[#0f172a] rounded-[20px] p-5 shadow-xl">
@@ -195,12 +191,12 @@ export default function VaultPage() {
             <div className="space-y-3">
               {debts.map((d) => (
                 <div key={d.id} className="bg-white text-[#0f172a] rounded-2xl p-4 flex justify-between items-center">
-                  <div className="flex-1 pr-3">
+                  <div className="flex-1 pr-3 min-w-0">
                     <p className="font-bold text-sm">{d.person}</p>
                     <p className="text-[11px] bg-gray-100 px-2 py-1 rounded-full mt-1 inline-block max-w-full truncate">{d.note}</p>
                     <p className="text-xs text-gray-500 mt-1">{d.type === 'i_owe' ? 'You owe' : 'Owes you'} • Due {d.due_date || '—'}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <p className={`font-extrabold ${d.type === 'i_owe' ? 'text-red-600' : 'text-green-700'}`}>₦{d.amount.toLocaleString()}</p>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">{d.status}</span>
                     {d.status === 'pending' && <button onClick={() => markPaid(d.id)} className="block text-[10px] bg-green-600 text-white px-2 py-1 rounded-full mt-1 font-bold ml-auto">Mark Paid ✓</button>}
@@ -212,28 +208,20 @@ export default function VaultPage() {
         </div>
       </div>
 
-      <button onClick={() => setShowAdd(true)} className="fixed bottom-24 right-6 w-14 h-14 bg-[#D4AF37] text-[#0f172a] rounded-full shadow-xl flex items-center justify-center text-2xl font-bold">+</button>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-[#0f172a] border-t border-white/10 flex justify-around py-3 text-[11px] text-gray-400">
-        <a href="/" className="flex flex-col items-center">🏠 Home</a>
-        <a href="/vault" className="flex flex-col items-center text-[#D4AF37]">🔒 Vault</a>
-        <a href="/donate" className="flex flex-col items-center">❤️ Donate</a>
-        <a href="/wasiyyah" className="flex flex-col items-center">📜 Wasi</a>
-      </div>
+      {/* FLOATING + BUTTON - Sits ABOVE the pill nav, no go cover again */}
+      <button onClick={() => setShowAdd(true)} className="fixed bottom-[115px] right-4 w-12 h-12 bg-[#D4AF37] text-[#0f172a] rounded-full shadow-xl flex items-center justify-center text-2xl font-bold z-30 lg:hidden">+</button>
 
       {showAdd && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur flex items-end md:items-center justify-center">
+        <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur flex items-end md:items-center justify-center">
           <div className="bg-white text-[#0f172a] w-full md:max-w-md rounded-t-[28px] md:rounded-[24px] p-6 max-h-[92vh] overflow-y-auto">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 md:hidden"></div>
             <h3 className="font-bold text-lg">Record New Haqq</h3>
             <p className="text-xs text-gray-500 mt-1">Tap to remember forgotten Haqq, or type your own</p>
-            
             <div className="mt-5 space-y-4">
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={()=>setNewDebt({...newDebt, type: 'i_owe'})} className={`p-3 rounded-xl border text-sm font-bold ${newDebt.type==='i_owe' ? 'bg-[#0f172a] text-white' : 'bg-gray-50'}`}>I Owe / I Wronged</button>
                 <button onClick={()=>setNewDebt({...newDebt, type: 'they_owe'})} className={`p-3 rounded-xl border text-sm font-bold ${newDebt.type==='they_owe' ? 'bg-[#D4AF37] text-[#0f172a]' : 'bg-gray-50'}`}>They Owe Me</button>
               </div>
-
               <div>
                 <label className="text-[11px] font-bold tracking-widest opacity-60">HOW DID I WRONG SOMEONE? (This will jog your memory)</label>
                 <select value={newDebt.note} onChange={e=>setNewDebt({...newDebt, note: e.target.value})} className="w-full mt-1 p-4 bg-gray-50 rounded-xl border text-sm font-bold outline-none">
@@ -276,7 +264,6 @@ export default function VaultPage() {
                   </optgroup>
                 </select>
               </div>
-
               <div className={`p-3 rounded-xl border-2 transition-all ${newDebt.note === "Other - Custom" ? 'border-[#D4AF37] bg-yellow-50/70' : 'border-dashed border-gray-200 bg-gray-50/50'}`}>
                 <label className="text-[11px] font-bold tracking-widest opacity-70">
                   {newDebt.note === "Other - Custom" ? "✍️ TYPE YOUR OWN HAQQ HERE (Required)" : "✍️ Describe Your Case More (Optional but Powerful)"}
@@ -286,20 +273,18 @@ export default function VaultPage() {
                   onChange={e=>setNewDebt({...newDebt, customNote: e.target.value})} 
                   placeholder={
                     newDebt.note === "Other - Custom" 
-                    ? "Example: I spoiled my friend's relationship, or I stole pen in office 2019, or I cheated during exam and copied someone's work, or I used company data for my business..."
-                    : "Add more details: Example - How it happened, where, when? This helps you remember on Qiyamah and fix it properly. Leave empty if not needed."
+                    ? "Example: I spoiled my friend's relationship, or I stole pen in office 2019, or I cheated during exam and copied someone's work..."
+                    : "Add more details: Example - How it happened, where, when? This helps you remember on Qiyamah and fix it properly."
                   }
                   className="w-full mt-2 p-3 bg-white rounded-xl border outline-none text-sm min-h-[90px] focus:border-[#0f172a]"
                   rows={3}
                 />
                 <p className="text-[10px] text-gray-500 mt-1">Allah loves honest confession. Write it for His sake — it stays private in your vault.</p>
               </div>
-
               <input value={newDebt.person} onChange={e=>setNewDebt({...newDebt, person: e.target.value})} placeholder="Person name (e.g. Musa, Classmate 2015, Neighbour)" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none" />
               <input value={newDebt.amount} onChange={e=>setNewDebt({...newDebt, amount: e.target.value})} type="number" placeholder="Amount ₦ (put 0 if not money - e.g. Ghibah)" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none" />
               <input value={newDebt.due_date} onChange={e=>setNewDebt({...newDebt, due_date: e.target.value})} type="date" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none" />
-              
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-2 pb-2">
                 <button onClick={()=>setShowAdd(false)} className="flex-1 p-3.5 bg-gray-100 rounded-xl font-bold">Cancel</button>
                 <button onClick={addDebt} className="flex-1 p-3.5 bg-[#0f172a] text-white rounded-xl font-bold">Save Haqq</button>
               </div>
@@ -307,6 +292,8 @@ export default function VaultPage() {
           </div>
         </div>
       )}
+
+      <BottomNav />
     </div>
   )
-      }
+        }
