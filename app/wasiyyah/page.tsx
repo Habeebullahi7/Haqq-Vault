@@ -2,7 +2,7 @@
 import { useState, useMemo, useRef } from 'react'
 import BottomNav from '../../components/BottomNav'
 
-// ===== SMART AMOUNT PARSER - Understands 10k, 10m, Ten Million =====
+// ===== SMART AMOUNT PARSER - 10k, 10m, Ten Million =====
 const WORD_NUMBERS: any = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100, thousand: 1000, million: 1000000, billion: 1000000000 }
 
 function parseWordNumber(text: string): number {
@@ -24,26 +24,20 @@ function parseSmartAmount(v: string): number {
   let s = String(v).toLowerCase().trim()
   s = s.replace(/₦|naira|ngn|\s*nairas?/g, '').trim()
   if (!s) return 0
-  // If it contains letters like million, billion, thousand, k, m, b
   if (/[a-z]/.test(s)) {
-    // 10.5m, 10k, 500k, 2b
     const shortMatch = s.match(/^([\d,.]+)\s*([kmb])\b/)
     if (shortMatch) {
       const n = parseFloat(shortMatch[1].replace(/,/g, ''))
       const mult = shortMatch[2] === 'k' ? 1000 : shortMatch[2] === 'm' ? 1000000 : 1000000000
       return Math.round(n * mult)
     }
-    // 10 million, 1.5 billion, 500 thousand
     const longMatch = s.match(/([\d,.]+)\s*(thousand|million|billion)/)
     if (longMatch) {
       const n = parseFloat(longMatch[1].replace(/,/g, ''))
       const mult = longMatch[2] === 'thousand' ? 1000 : longMatch[2] === 'million' ? 1000000 : 1000000000
       return Math.round(n * mult)
     }
-    // Ten million, twenty thousand, one million five hundred thousand
     if (/million|billion|thousand|hundred/.test(s)) {
-      // Handle "one million five hundred thousand" = 1,500,000
-      const parts = s.split(/million|billion|thousand/)
       let result = 0
       if (s.includes('billion')) {
         const before = s.split('billion')[0]
@@ -77,7 +71,6 @@ function parseSmartAmount(v: string): number {
       }
       return parseWordNumber(s)
     }
-    // Just words like "ten" , "fifty"
     if (/^[a-z\s-]+$/.test(s)) return parseWordNumber(s)
   }
   return parseFloat(s.replace(/[^0-9.]/g, '')) || 0
@@ -85,12 +78,10 @@ function parseSmartAmount(v: string): number {
 
 const formatMoney = (n: number) => '₦' + Math.round(n).toLocaleString()
 
-// Smart Input - formats to 10,000,000 on blur, accepts 10m / Ten million while typing
 const Input = ({ value, onChange, placeholder }: any) => {
   const handleBlur = (e: any) => {
     const parsed = parseSmartAmount(e.target.value)
     if (parsed > 0) {
-      // Show formatted version
       onChange({ target: { value: parsed.toLocaleString() } })
     }
   }
@@ -117,7 +108,7 @@ const Hint = () => (
 export default function WasiyyahPage() {
   const [step, setStep] = useState(1)
 
-  // STEP 1
+  // STEP 1 - ASSETS
   const [cashHome, setCashHome] = useState('')
   const [banks, setBanks] = useState([{ name: '', amt: '' }])
   const [properties, setProperties] = useState([{ name: '', amt: '' }])
@@ -144,7 +135,7 @@ export default function WasiyyahPage() {
     </div>
   )
 
-  // STEP 2
+  // STEP 2 - DEBTS
   const [loans, setLoans] = useState([{ from: '', amt: '' }])
   const [owing, setOwing] = useState([{ person: '', amt: '' }])
   const [kaffarahAmt, setKaffarahAmt] = useState('')
@@ -174,7 +165,7 @@ export default function WasiyyahPage() {
   const [wasiyyahAmt, setWasiyyahAmt] = useState('')
   const [message, setMessage] = useState('')
 
-  // STEP 5
+  // STEP 5 - VIDEO + WITNESSES + LAWYER
   const [fullName, setFullName] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [location, setLocation] = useState('')
@@ -191,6 +182,15 @@ export default function WasiyyahPage() {
   const [soundMind, setSoundMind] = useState(false)
   const videoRef = useRef<any>(null)
   const mediaRecorderRef = useRef<any>(null)
+
+  // LAWYER SELECTION
+  const [lawyerChoice, setLawyerChoice] = useState<'mine' | 'haqq' | 'none'>('none')
+  const [lawyerName, setLawyerName] = useState('')
+  const [lawyerFirm, setLawyerFirm] = useState('')
+  const [lawyerPhone, setLawyerPhone] = useState('')
+  const [lawyerEmail, setLawyerEmail] = useState('')
+  const [haqqLawyerType, setHaqqLawyerType] = useState('Sharia Court Lawyer')
+  const [haqqLawyerNote, setHaqqLawyerNote] = useState('')
 
   const num = (v: string) => parseSmartAmount(v)
   const sumList = (l: any) => l.reduce((s: number, x: any) => s + num(x.amt), 0)
@@ -297,17 +297,17 @@ export default function WasiyyahPage() {
   const saveAll = () => {
     if (!declaration || !soundMind) { alert('Please confirm both declarations before saving.'); return }
     if (!witness1Name || !witness2Name) { alert('Please add two witnesses to legalize your Wasiyyah.'); return }
-    const data = { fullName, myGender, totalAssets, totalDebts, net, wasiyyahAmt, wasiyyahTo, message, witness1Name, witness2Name, executorName, location, savedAt: new Date().toISOString(), videoVerified: !!videoFile, faraid }
+    const data = { fullName, myGender, totalAssets, totalDebts, net, wasiyyahAmt, wasiyyahTo, message, witness1Name, witness2Name, executorName, location, savedAt: new Date().toISOString(), videoVerified: !!videoFile, faraid, lawyerChoice, lawyerName, lawyerFirm, lawyerPhone, lawyerEmail, haqqLawyerType, haqqLawyerNote }
     localStorage.setItem('haqq-wasiyyah', JSON.stringify(data))
     alert('Your Wasiyyah has been saved and verified successfully! You can now download the PDF.')
   }
 
-  // ===== DOWNLOAD PDF =====
   const downloadPDF = () => {
     const date = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
     const assetsHtml = [...banks.map(b => `<tr><td>Bank - ${b.name || 'Bank'}</td><td style="text-align:right">${fmt(num(b.amt))}</td></tr>`), ...properties.map(p => `<tr><td>Property - ${p.name || 'Property'}</td><td style="text-align:right">${fmt(num(p.amt))}</td></tr>`), ...cars.map(c => `<tr><td>Car - ${c.name || 'Car'}</td><td style="text-align:right">${fmt(num(c.amt))}</td></tr>`), `<tr><td>Cash at Home</td><td style="text-align:right">${fmt(num(cashHome))}</td></tr>`].join('')
     const debtsHtml = [...loans.map(l => `<tr><td>Loan from ${l.from || 'Lender'}</td><td style="text-align:right">${fmt(num(l.amt))}</td></tr>`), ...owing.map(o => `<tr><td>Owed to ${o.person || 'Person'}</td><td style="text-align:right">${fmt(num(o.amt))}</td></tr>`), `<tr><td>Kaffarah</td><td style="text-align:right">${fmt(num(kaffarahAmt))}</td></tr><tr><td>Funeral Expenses</td><td style="text-align:right">${fmt(num(funeralAmt))}</td></tr>`].join('')
     const faraidHtml = faraid.map((f: any) => `<tr><td>${f.name} (${f.pct})</td><td style="text-align:right">${fmt(f.amt)}</td></tr>`).join('') || '<tr><td colspan="2">No heirs listed</td></tr>'
+    const lawyerText = lawyerChoice === 'mine' ? `${lawyerName || '-'} - ${lawyerFirm || ''} (${lawyerPhone || ''} / ${lawyerEmail || ''})` : lawyerChoice === 'haqq' ? `HAQQ Partner Lawyer Requested - ${haqqLawyerType} - Note: ${haqqLawyerNote || 'None'}` : 'No lawyer selected yet - To be signed before a lawyer / Sharia Court / Notary'
 
     const html = `
     <html><head><title>Wasiyyah - ${fullName || 'HAQQ'}</title><style>
@@ -327,11 +327,11 @@ export default function WasiyyahPage() {
       <h2>3. Wasiyyah (One-Third)</h2><p>I bequeath <b>${fmt(num(wasiyyahAmt))}</b> (maximum ${fmt(maxWasiyyah)}) to <b>${wasiyyahTo || 'Charity / Non-heir'}</b>.</p>
       <h2>4. Faraid Distribution</h2><table>${faraidHtml}<tr class="total"><td>Total for Faraid</td><td style="text-align:right">${fmt(faraidPool)}</td></tr></table>
       <h2>5. Final Message</h2><p>${message || 'May Allah forgive me and grant my family patience.'}</p>
-      <h2>6. Executor & Witnesses</h2>
-      <p><b>Executor:</b> ${executorName || '-'} (${executorPhone || '-'})<br/><b>Witness 1:</b> ${witness1Name || '-'} (${witness1Phone || '-'})<br/><b>Witness 2:</b> ${witness2Name || '-'} (${witness2Phone || '-'})</p>
+      <h2>6. Executor, Lawyer & Witnesses</h2>
+      <p><b>Executor:</b> ${executorName || '-'} (${executorPhone || '-'})<br/><b>Lawyer:</b> ${lawyerText}<br/><b>Witness 1:</b> ${witness1Name || '-'} (${witness1Phone || '-'})<br/><b>Witness 2:</b> ${witness2Name || '-'} (${witness2Phone || '-'})</p>
       <p><b>Video Verification:</b> ${videoUrl ? 'Completed - Video recorded and attached in app' : 'Not recorded'}<br/><b>Declaration:</b> I confirm this Wasiyyah was made in sound mind and willingly.</p>
       <div class="sig"><div><div class="line">Signature of Testator<br/>${fullName || ''}<br/>Date: ${date}</div></div><div><div class="line">Witness 1 Signature<br/>Date: ${date}</div></div></div>
-      <div class="sig"><div><div class="line">Witness 2 Signature<br/>Date: ${date}</div></div><div><div class="line">Executor Signature<br/>Date: ${date}</div></div></div>
+      <div class="sig"><div><div class="line">Witness 2 Signature<br/>Date: ${date}</div></div><div><div class="line">Lawyer Signature<br/>${lawyerChoice === 'mine' ? lawyerName : lawyerChoice === 'haqq' ? 'HAQQ Partner Lawyer' : ''}<br/>Date: ${date}</div></div></div>
       <p style="font-size:11px;color:#777;margin-top:30px;text-align:center">Generated by HAQQ App - Based on Qur&apos;an 4:11-12. For full legal effect, please sign before a lawyer, Sharia Court or Notary.</p>
       <script>window.onload=()=>window.print()</script>
     </body></html>`
@@ -545,6 +545,45 @@ export default function WasiyyahPage() {
               <Label>Executor - Person Who Will Carry Out Your Wasiyyah</Label>
               <Input value={executorName} onChange={(e: any) => setExecutorName(e.target.value)} placeholder="Executor Full Name" />
               <div className="mt-2"><Input value={executorPhone} onChange={(e: any) => setExecutorPhone(e.target.value)} placeholder="Executor Phone Number" /></div>
+
+              <Label>Lawyer - Who Will Legalize This Wasiyyah?</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <button onClick={() => setLawyerChoice('mine')} className={`py-3 rounded-xl border font-bold text-[13px] ${lawyerChoice === 'mine' ? 'bg-black text-white' : 'bg-white text-black'}`}>My Own Lawyer</button>
+                <button onClick={() => setLawyerChoice('haqq')} className={`py-3 rounded-xl border font-bold text-[13px] ${lawyerChoice === 'haqq' ? 'bg-black text-white' : 'bg-white text-black'}`}>HAQQ Lawyer</button>
+                <button onClick={() => setLawyerChoice('none')} className={`py-3 rounded-xl border font-bold text-[13px] ${lawyerChoice === 'none' ? 'bg-black text-white' : 'bg-white text-black'}`}>No Lawyer Yet</button>
+              </div>
+              {lawyerChoice === 'mine' && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-[12px] text-gray-500">Enter your lawyer details. We will include them in the PDF for signing.</p>
+                  <Input value={lawyerName} onChange={(e: any) => setLawyerName(e.target.value)} placeholder="Lawyer Full Name - e.g. Barr. Ahmed Musa" />
+                  <Input value={lawyerFirm} onChange={(e: any) => setLawyerFirm(e.target.value)} placeholder="Law Firm - e.g. Musa & Co. Chambers" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input value={lawyerPhone} onChange={(e: any) => setLawyerPhone(e.target.value)} placeholder="Lawyer Phone" />
+                    <Input value={lawyerEmail} onChange={(e: any) => setLawyerEmail(e.target.value)} placeholder="Lawyer Email" />
+                  </div>
+                </div>
+              )}
+              {lawyerChoice === 'haqq' && (
+                <div className="mt-3 bg-blue-50 p-3 rounded-xl">
+                  <p className="text-[13px] font-bold text-black">HAQQ Partner Lawyer</p>
+                  <p className="text-[12px] text-gray-600 mt-1">We will connect you with a verified partner lawyer in your state to review and legalize your Wasiyyah.</p>
+                  <div className="mt-3">
+                    <select value={haqqLawyerType} onChange={(e) => setHaqqLawyerType(e.target.value)} className="w-full p-3 bg-white rounded-xl border text-black text-sm font-medium outline-none">
+                      <option>Sharia Court Lawyer</option>
+                      <option>Islamic Estate Lawyer</option>
+                      <option>Notary / General Lawyer</option>
+                    </select>
+                  </div>
+                  <div className="mt-2">
+                    <textarea value={haqqLawyerNote} onChange={(e) => setHaqqLawyerNote(e.target.value)} placeholder="Any note for the lawyer? e.g. I am in Kano, I need urgent review..." className="w-full p-3 bg-white rounded-xl border text-black placeholder:text-gray-400 text-sm outline-none min-h-[70px]" />
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-2">After you save, our team will contact you within 24 hours to assign a lawyer.</p>
+                </div>
+              )}
+              {lawyerChoice === 'none' && (
+                <p className="text-[12px] text-gray-500 mt-2">You can still download the PDF and take it to any lawyer later.</p>
+              )}
+
               <Label>Declaration</Label>
               <label className="flex gap-3 items-start bg-gray-50 p-3 rounded-xl cursor-pointer">
                 <input type="checkbox" checked={soundMind} onChange={(e) => setSoundMind(e.target.checked)} className="mt-1 w-4 h-4 accent-black" />
@@ -568,6 +607,7 @@ export default function WasiyyahPage() {
                 <div className="flex justify-between"><span>For Faraid</span><span className="font-bold">{fmt(faraidPool)}</span></div>
                 <div className="flex justify-between"><span>Video Verification</span><span className="font-bold">{videoUrl ? 'Completed ✓' : 'Not Done'}</span></div>
                 <div className="flex justify-between"><span>Witnesses</span><span className="font-bold">{witness1Name && witness2Name ? '2 Witnesses Added ✓' : 'Pending'}</span></div>
+                <div className="flex justify-between"><span>Lawyer</span><span className="font-bold">{lawyerChoice === 'mine' ? lawyerName || 'My Lawyer' : lawyerChoice === 'haqq' ? 'HAQQ Lawyer Requested' : 'No Lawyer Yet'}</span></div>
               </div>
             </div>
 
@@ -583,4 +623,4 @@ export default function WasiyyahPage() {
       <BottomNav />
     </div>
   )
-          }
+      }
