@@ -21,7 +21,7 @@ export default function BottomNav(){
   const path = usePathname()
   const isActive = (href:string) => path === href || path.startsWith(href + '/')
   return (
-    <div className="lg:hidden fixed bottom-4 left-0 right-0 z-50 flex flex-col items-center gap-2 pointer-events-none">
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center gap-2 pointer-events-none px-4 pb-[max(12px,env(safe-area-inset-bottom))]">
       {(path.startsWith('/kaffarah') || path.startsWith('/account')) && (
         <div className="pointer-events-auto bg-[#0A1931]/90 backdrop-blur-xl border border-white/10 rounded-full flex gap-1 px-2 py-1.5">
           {moreItems.map(i=>{
