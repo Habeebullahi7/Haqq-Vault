@@ -2,8 +2,8 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import BottomNav from '../../components/BottomNav'
 
-const IMAM_WHATSAPP = '2348161866717' // <-- Change to your real Imam number
-const HAQQ_ADMIN_WHATSAPP = '2347041935986' // <-- Change to HAQQ Admin number
+const IMAM_WHATSAPP = '2348161866717'
+const HAQQ_ADMIN_WHATSAPP = '2347041935986'
 
 const WORD_NUMBERS: any = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100, thousand: 1000, million: 1000000, billion: 1000000000 }
 function parseWordNumber(text: string): number {
@@ -57,15 +57,11 @@ const Hint = () => (<p className="text-[11px] text-gray-500 mt-1">You can type 1
 
 export default function WasiyyahPage() {
   const [step, setStep] = useState(1)
-
-  // VAULT LOCK - INITIAL ENTRY
   const [isLocked, setIsLocked] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [savedPin, setSavedPin] = useState('1234')
   const [showPinSetup, setShowPinSetup] = useState(false)
   const [newPin, setNewPin] = useState('')
-
-  // VAULT STATUS - DRAFT / ACTIVE_LOCKED / EDITING / RELEASED
   const [vaultStatus, setVaultStatus] = useState<'DRAFT' | 'ACTIVE_LOCKED' | 'EDITING' | 'RELEASED'>('DRAFT')
   const [showUnlockModal, setShowUnlockModal] = useState(false)
   const [unlockPin, setUnlockPin] = useState('')
@@ -108,18 +104,20 @@ export default function WasiyyahPage() {
     </div>
   )
 
-  // STEP 2
+  // STEP 2 - FIXED: funeralAmt no longer defaults to 500000
   const [loans, setLoans] = useState([{ from: '', amt: '' }])
   const [owing, setOwing] = useState([{ person: '', amt: '' }])
   const [kaffarahAmt, setKaffarahAmt] = useState('')
-  const [funeralAmt, setFuneralAmt] = useState('500000')
+  const [funeralAmt, setFuneralAmt] = useState('')
 
-  // STEP 3
-  const [myGender, setMyGender] = useState<'male' | 'female'>('male')
-  const [isMarried, setIsMarried] = useState('yes')
-  const [wivesCount, setWivesCount] = useState('1')
-  const [sons, setSons] = useState('0')
-  const [daughters, setDaughters] = useState('0')
+  // STEP 3 - FIXED: No fake defaults. Empty until user selects.
+  const [myGender, setMyGender] = useState<'male' | 'female' | ''>('')
+  const [isMarried, setIsMarried] = useState('')
+  const [wivesCount, setWivesCount] = useState('')
+  const [sons, setSons] = useState('')
+  const [daughters, setDaughters] = useState('')
+  const [hasFilledFamily, setHasFilledFamily] = useState(false)
+  const [hasFilledFinance, setHasFilledFinance] = useState(false)
   const [fatherAlive, setFatherAlive] = useState('no')
   const [motherAlive, setMotherAlive] = useState('no')
   const [pGrandFather, setPGrandFather] = useState('no')
@@ -185,7 +183,7 @@ export default function WasiyyahPage() {
   const [lawyerPaid, setLawyerPaid] = useState(false)
   const [isPremium, setIsPremium] = useState(false)
 
-  // ASK IMAM - WHATSAPP ONLY
+  // ASK IMAM
   const [imamQuestion, setImamQuestion] = useState('')
   const [imamSent, setImamSent] = useState(false)
   const [showImam, setShowImam] = useState(false)
@@ -218,15 +216,18 @@ export default function WasiyyahPage() {
   const stopRecording = () => { if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); setIsRecording(false) } }
   const handleVideoUpload = (e: any) => { const f = e.target.files[0]; if (f) { setVideoFile(f); setVideoUrl(URL.createObjectURL(f)) } }
 
-  // ASK IMAM - STRAIGHT TO WHATSAPP
+  // ASK IMAM - FIXED: Only send real data, never defaults
   const sendToImamWhatsApp = () => {
     if (!imamQuestion.trim()) return alert('Please type your question first.')
-    const text = `Assalamu Alaikum Imam,\n\nI have a question about my Wasiyyah on HAQQ App:\n\nQuestion: ${imamQuestion}\n\nMy details:\nName: ${fullName || 'Not provided'}\nGender: ${myGender}\nMarried: ${isMarried}\nNet Estate: ${fmt(net)}\nChildren: ${sons} sons, ${daughters} daughters\n\nPlease reply me. Jazakum Allahu Khairan.`
+    const genderText = hasFilledFamily && myGender ? (myGender === 'male' ? 'Male' : 'Female') : 'Not provided'
+    const marriedText = hasFilledFamily && isMarried ? (isMarried === 'yes' ? 'Yes' : 'No') : 'Not provided'
+    const childrenText = hasFilledFamily && (sons !== '' || daughters !== '') ? `${sons || '0'} sons, ${daughters || '0'} daughters` : 'Not provided'
+    const netText = hasFilledFinance ? fmt(net) : 'Not provided'
+    const text = `Assalamu Alaikum Imam,\n\nI have a question about my Wasiyyah on HAQQ App:\n\nQuestion: ${imamQuestion}\n\nMy details:\nName: ${fullName || 'Not provided'}\nGender: ${genderText}\nMarried: ${marriedText}\nNet Estate: ${netText}\nChildren: ${childrenText}\n\nPlease reply me. Jazakum Allahu Khairan.`
     window.open(`https://wa.me/${IMAM_WHATSAPP}?text=${encodeURIComponent(text)}`, '_blank')
     setImamSent(true)
   }
 
-  // UNLOCK TO EDIT
   const sendOtp = () => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
     setGeneratedOtp(otp); setOtpSent(true)
@@ -254,6 +255,7 @@ export default function WasiyyahPage() {
 
   const faraid = useMemo(() => {
     const out: any[] = []
+    if (!hasFilledFamily) return out
     if (faraidPool <= 0) return out
     let pool = faraidPool
     const s = parseInt(sons) || 0, d = parseInt(daughters) || 0
@@ -298,7 +300,7 @@ export default function WasiyyahPage() {
     else if (pool > 0 && (parseInt(paternalUncles) || 0) > 0) take((parseInt(paternalUncles) || 0) > 1 ? `Paternal Uncles (${paternalUncles})` : 'Paternal Uncle', pool, 'Residuary')
     else if (pool > 0 && out.length > 0) take('Remaining to Nearest Residuary Heir', pool, 'Residuary')
     return out
-  }, [faraidPool, myGender, isMarried, wivesCount, sons, daughters, fatherAlive, motherAlive, pGrandFather, pGrandMother, mGrandMother, fullBrothers, fullSisters, paternalBrothers, paternalSisters, maternalBrothers, maternalSisters, paternalUncles])
+  }, [faraidPool, hasFilledFamily, myGender, isMarried, wivesCount, sons, daughters, fatherAlive, motherAlive, pGrandFather, pGrandMother, mGrandMother, fullBrothers, fullSisters, paternalBrothers, paternalSisters, maternalBrothers, maternalSisters, paternalUncles])
 
   const saveAll = () => {
     if (!declaration || !soundMind) { alert('Please confirm both declarations before saving.'); return }
@@ -477,7 +479,7 @@ export default function WasiyyahPage() {
             </div>
             <div className="flex gap-3 mt-4">
               <button onClick={() => setStep(1)} className="flex-1 py-3 rounded-full border font-bold">Back</button>
-              <button onClick={() => setStep(3)} className="flex-1 bg-[#0A1931] text-white py-3 rounded-full font-bold">Next - Family</button>
+              <button onClick={() => { setHasFilledFinance(true); setStep(3) }} className="flex-1 bg-[#0A1931] text-white py-3 rounded-full font-bold">Next - Family</button>
             </div>
           </Q>
         )}
@@ -490,6 +492,7 @@ export default function WasiyyahPage() {
               <button onClick={() => setMyGender('male')} className={`flex-1 py-3 rounded-xl border font-bold ${myGender === 'male' ? 'bg-black text-white' : 'bg-white text-black'}`}>I Am Male</button>
               <button onClick={() => setMyGender('female')} className={`flex-1 py-3 rounded-xl border font-bold ${myGender === 'female' ? 'bg-black text-white' : 'bg-white text-black'}`}>I Am Female</button>
             </div>
+            {myGender === '' && <p className="text-[11px] text-amber-600 mt-1 font-medium">Please select your gender - nothing is selected yet.</p>}
             <Label>{myGender === 'male' ? 'My Wives - How Many Wives Do You Have?' : 'My Husband'}</Label>
             <div className="flex gap-2">
               <button onClick={() => setIsMarried('yes')} className={`flex-1 py-2.5 rounded-xl border font-bold text-sm ${isMarried === 'yes' ? 'bg-black text-white' : 'bg-white text-black'}`}>I Am Married</button>
@@ -499,8 +502,8 @@ export default function WasiyyahPage() {
             {isMarried === 'yes' && myGender === 'female' && <div className="mt-3"><p className="text-[13px] font-medium text-black bg-gray-50 p-3 rounded-xl">Your husband will receive 1/4 if you have children, or 1/2 if you have no children.</p></div>}
             <Label>My Children</Label>
             <div className="grid grid-cols-2 gap-3">
-              <Input value={sons} onChange={(e: any) => setSons(e.target.value)} placeholder="Number of Sons - 0" />
-              <Input value={daughters} onChange={(e: any) => setDaughters(e.target.value)} placeholder="Number of Daughters - 0" />
+              <Input value={sons} onChange={(e: any) => setSons(e.target.value)} placeholder="Number of Sons" />
+              <Input value={daughters} onChange={(e: any) => setDaughters(e.target.value)} placeholder="Number of Daughters" />
             </div>
             <Label>My Parents - Select if Alive</Label>
             <div className="grid grid-cols-2 gap-3">
@@ -515,21 +518,21 @@ export default function WasiyyahPage() {
             </div>
             <Label>My Full Siblings</Label>
             <div className="grid grid-cols-2 gap-3">
-              <Input value={fullBrothers} onChange={(e: any) => setFullBrothers(e.target.value)} placeholder="My Full Brothers - 0" />
-              <Input value={fullSisters} onChange={(e: any) => setFullSisters(e.target.value)} placeholder="My Full Sisters - 0" />
+              <Input value={fullBrothers} onChange={(e: any) => setFullBrothers(e.target.value)} placeholder="My Full Brothers" />
+              <Input value={fullSisters} onChange={(e: any) => setFullSisters(e.target.value)} placeholder="My Full Sisters" />
             </div>
             <Label>My Paternal Siblings</Label>
             <div className="grid grid-cols-2 gap-3">
-              <Input value={paternalBrothers} onChange={(e: any) => setPaternalBrothers(e.target.value)} placeholder="My Paternal Brothers - 0" />
-              <Input value={paternalSisters} onChange={(e: any) => setPaternalSisters(e.target.value)} placeholder="My Paternal Sisters - 0" />
+              <Input value={paternalBrothers} onChange={(e: any) => setPaternalBrothers(e.target.value)} placeholder="My Paternal Brothers" />
+              <Input value={paternalSisters} onChange={(e: any) => setPaternalSisters(e.target.value)} placeholder="My Paternal Sisters" />
             </div>
             <Label>My Maternal Siblings</Label>
             <div className="grid grid-cols-2 gap-3">
-              <Input value={maternalBrothers} onChange={(e: any) => setMaternalBrothers(e.target.value)} placeholder="My Maternal Brothers - 0" />
-              <Input value={maternalSisters} onChange={(e: any) => setMaternalSisters(e.target.value)} placeholder="My Maternal Sisters - 0" />
+              <Input value={maternalBrothers} onChange={(e: any) => setMaternalBrothers(e.target.value)} placeholder="My Maternal Brothers" />
+              <Input value={maternalSisters} onChange={(e: any) => setMaternalSisters(e.target.value)} placeholder="My Maternal Sisters" />
             </div>
             <Label>My Paternal Uncles</Label>
-            <Input value={paternalUncles} onChange={(e: any) => setPaternalUncles(e.target.value)} placeholder="Number of Paternal Uncles - 0" />
+            <Input value={paternalUncles} onChange={(e: any) => setPaternalUncles(e.target.value)} placeholder="Number of Paternal Uncles" />
             <Label>Heirs Contact Details - So Executor Can Contact Them</Label>
             {heirs.map((h: any, i: number) => (
               <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 mt-2">
@@ -542,7 +545,7 @@ export default function WasiyyahPage() {
             <AddBtn onClick={() => setHeirs([...heirs, { name: '', relation: '', phone: '' }])} label="Heir" />
             <div className="flex gap-3 mt-5">
               <button onClick={() => setStep(2)} className="flex-1 py-3 rounded-full border font-bold">Back</button>
-              <button onClick={() => setStep(4)} className="flex-1 bg-[#0A1931] text-white py-3 rounded-full font-bold">Next - Wasiyyah</button>
+              <button onClick={() => { setHasFilledFamily(true); setStep(4) }} className="flex-1 bg-[#0A1931] text-white py-3 rounded-full font-bold">Next - Wasiyyah</button>
             </div>
           </Q>
         )}
@@ -662,7 +665,6 @@ export default function WasiyyahPage() {
               <Label>Backup Executor</Label>
               <Input value={backupExecutorName} onChange={(e: any) => setBackupExecutorName(e.target.value)} placeholder="Backup Executor Full Name" />
               <div className="mt-2"><Input value={backupExecutorPhone} onChange={(e: any) => setBackupExecutorPhone(e.target.value)} placeholder="Backup Executor Phone Number" /></div>
-
               <Label>Lawyer - Who Will Legalize This Wasiyyah?</Label>
               <div className="grid grid-cols-3 gap-2">
                 <button onClick={() => setLawyerChoice('mine')} className={`py-3 rounded-xl border font-bold text-[13px] ${lawyerChoice === 'mine' ? 'bg-black text-white' : 'bg-white text-black'}`}>My Own Lawyer</button>
@@ -695,13 +697,11 @@ export default function WasiyyahPage() {
                 </div>
               )}
               {lawyerChoice === 'none' && <p className="text-[12px] text-gray-500 mt-2">You can still save to Vault and take DRAFT to any lawyer later.</p>}
-
               <Label>Premium PDF - With HAQQ Seal</Label>
               <div className="flex justify-between items-center bg-yellow-50 p-3 rounded-xl">
                 <div><p className="text-sm font-bold">Premium PDF</p><p className="text-[11px] text-gray-600">With HAQQ Verified Seal + Lawyer Signature Page</p></div>
                 <button onClick={() => setIsPremium(!isPremium)} className={`px-4 py-2 rounded-full font-bold text-sm ${isPremium ? 'bg-black text-white' : 'bg-white text-black border'}`}>{isPremium ? '✓ Premium On' : 'Add Premium'}</button>
               </div>
-
               <Label>Declaration</Label>
               <label className="flex gap-3 items-start bg-gray-50 p-3 rounded-xl cursor-pointer">
                 <input type="checkbox" checked={soundMind} onChange={(e) => setSoundMind(e.target.checked)} className="mt-1 w-4 h-4 accent-black" />
@@ -742,34 +742,28 @@ export default function WasiyyahPage() {
 
             <div className="flex flex-col gap-3">
               {vaultStatus === 'EDITING' ? (
-                <button onClick={saveAndLockAgain} className="w-full py-3.5 rounded-full bg-yellow-400 text-black font-bold">Save Changes & Lock Again 🔒</button>
+                <button onClick={saveAndLockAgain} className="w-full py-3.5 rounded-full bg-black text-white font-bold">Save & Lock Again</button>
               ) : (
-                <button onClick={saveAll} className="w-full py-3.5 rounded-full bg-black text-white font-bold">Save To My Vault - Lock My Wasiyyah</button>
+                <button onClick={saveAll} className="w-full py-3.5 rounded-full bg-black text-white font-bold">Save My Wasiyyah To Vault 🔒</button>
               )}
-              <button onClick={downloadDraftPDF} className="w-full py-3 rounded-full bg-white text-black font-bold text-sm border">Download DRAFT Copy (With DRAFT Watermark) - For Lawyer Review Only</button>
-              <a href="/vault" className="block text-center py-3 rounded-full bg-[#0A1931] text-white font-bold text-sm">View My Vault →</a>
+              <button onClick={downloadDraftPDF} className="w-full py-3.5 rounded-full bg-white text-black font-bold border">Download DRAFT PDF (For Lawyer Review)</button>
+              <div className="grid grid-cols-2 gap-2">
+                <a href={waLink(witness1Phone)} target="_blank" className="text-center py-3 rounded-full bg-gray-100 text-black font-bold text-sm">Notify Witness 1</a>
+                <a href={waLink(witness2Phone)} target="_blank" className="text-center py-3 rounded-full bg-gray-100 text-black font-bold text-sm">Notify Witness 2</a>
+                <a href={waLink(executorPhone)} target="_blank" className="text-center py-3 rounded-full bg-gray-100 text-black font-bold text-sm">Notify Executor</a>
+                <a href={`https://wa.me/${HAQQ_ADMIN_WHATSAPP}?text=${encodeURIComponent('Assalamu Alaikum HAQQ Admin, I need help with my Wasiyyah.')}`} target="_blank" className="text-center py-3 rounded-full bg-yellow-400 text-black font-bold text-sm">Contact HAQQ Admin</a>
+              </div>
               <button onClick={() => setStep(4)} className="w-full py-3 rounded-full bg-white text-black font-bold">Back</button>
             </div>
-
-            <Q title="Notify My Witnesses & Executor">
-              <p className="text-[13px] text-gray-600 mt-1">After saving, tap to notify them on WhatsApp so they know they have been named.</p>
-              <div className="grid grid-cols-1 gap-2 mt-3">
-                {witness1Phone && <a href={waLink(witness1Phone)} target="_blank" className="block text-center bg-green-500 text-white py-3 rounded-full font-bold text-sm">Notify Witness 1 - {witness1Name} on WhatsApp</a>}
-                {witness2Phone && <a href={waLink(witness2Phone)} target="_blank" className="block text-center bg-green-500 text-white py-3 rounded-full font-bold text-sm">Notify Witness 2 - {witness2Name} on WhatsApp</a>}
-                {executorPhone && <a href={waLink(executorPhone)} target="_blank" className="block text-center bg-black text-white py-3 rounded-full font-bold text-sm">Notify Executor - {executorName} on WhatsApp</a>}
-                {!witness1Phone && !witness2Phone && !executorPhone && <p className="text-gray-500 text-sm text-center">Add phone numbers for witnesses and executor to enable WhatsApp notification.</p>}
-              </div>
-            </Q>
-            <a href="/report-death" className="block text-center bg-red-600 text-white py-3 rounded-full font-bold text-sm">Report Death - Release Wasiyyah</a>
           </>
         )}
       </div>
 
-      {showUnlockModal && vaultStatus === 'ACTIVE_LOCKED' && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-          <div className="bg-white rounded-[24px] p-6 w-full max-w-[400px] text-black">
-            <h3 className="font-extrabold text-[18px] text-center">Unlock To Edit 🔓</h3>
-            <p className="text-[13px] text-gray-600 text-center mt-1">For security, enter your PIN + OTP. Only owner can unlock.</p>
+      {showUnlockModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-end md:items-center justify-center">
+          <div className="bg-white text-black w-full md:max-w-md rounded-t-[24px] md:rounded-[24px] p-6 max-h-[92vh] overflow-y-auto">
+            <h3 className="font-extrabold text-lg">Unlock To Edit - Verification Required</h3>
+            <p className="text-[12px] text-gray-500 mt-1">Only the owner can unlock. You need your PIN + OTP.</p>
             <label className="text-[11px] font-bold mt-4 block">WHY DO YOU WANT TO EDIT?</label>
             <select value={editReason} onChange={(e) => setEditReason(e.target.value)} className="w-full p-3 border rounded-xl mt-1 text-sm outline-none">
               <option value="">Select reason...</option>
@@ -797,4 +791,4 @@ export default function WasiyyahPage() {
       <BottomNav />
     </div>
   )
-            }
+}
