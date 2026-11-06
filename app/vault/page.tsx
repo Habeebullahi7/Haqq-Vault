@@ -27,6 +27,7 @@ export default function VaultPage() {
   const [wasiyyah, setWasiyyah] = useState<any>(null);
   const [wasiyyahStatus, setWasiyyahStatus] = useState('DRAFT');
   const [versions, setVersions] = useState<any[]>([]);
+  const [userEmail, setUserEmail] = useState('')
 
   useEffect(() => {
     fetchDebts();
@@ -44,10 +45,16 @@ export default function VaultPage() {
     }
   }, []);
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  }
+
   async function fetchWasiyyah() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        setUserEmail(user.email || '')
         const { data } = await supabase.from('wasiyyahs').select('*').eq('user_id', user.id).single();
         if (data) {
           setWasiyyah(data);
@@ -69,7 +76,13 @@ export default function VaultPage() {
   }
 
   async function fetchDebts() {
-    const { data } = await supabase.from('debts').select('*').order('created_at', { ascending: false });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      // No user - show local only, don't hang
+      return;
+    }
+    setUserEmail(user.email || '')
+    const { data } = await supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
     if (data) setDebts(data as any);
   }
 
@@ -80,6 +93,7 @@ export default function VaultPage() {
       ? newDebt.customNote 
       : newDebt.note + (newDebt.customNote ? ` - ${newDebt.customNote}` : '');
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { alert("Please login first"); window.location.href = '/login'; return; }
     await supabase.from('debts').insert([{ 
       person: newDebt.person,
       amount: Number(newDebt.amount) || 0, 
@@ -107,8 +121,12 @@ export default function VaultPage() {
       {/* TOP HEADER */}
       <div className="px-6 py-5 flex justify-between items-center border-b border-white/10 sticky top-0 bg-[#0f172a]/95 backdrop-blur z-20">
         <h1 className="font-bold text-lg tracking-widest">HAQQ VAULT <span className="text-[#D4AF37]">🔒</span></h1>
-        <a href="/wasiyyah" className="text-[11px] bg-[#D4AF37] text-[#0f172a] px-3 py-1.5 rounded-full font-bold no-underline">Wasiyyah</a>
+        <div className="flex items-center gap-2">
+          <a href="/wasiyyah" className="text-[11px] bg-[#D4AF37] text-[#0f172a] px-3 py-1.5 rounded-full font-bold no-underline">Wasiyyah</a>
+          <button onClick={handleLogout} className="text-[11px] bg-white/10 text-white px-3 py-1.5 rounded-full font-bold border border-white/20">Logout</button>
+        </div>
       </div>
+      {userEmail && <p className="text-center text-[11px] text-gray-400 mt-2">Logged in as {userEmail}</p>}
 
       <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
         {/* WASIYYAH VAULT CARD */}
@@ -208,7 +226,6 @@ export default function VaultPage() {
         </div>
       </div>
 
-      {/* FLOATING + BUTTON - Sits ABOVE the pill nav, no go cover again */}
       <button onClick={() => setShowAdd(true)} className="fixed bottom-[115px] right-4 w-12 h-12 bg-[#D4AF37] text-[#0f172a] rounded-full shadow-xl flex items-center justify-center text-2xl font-bold z-30 lg:hidden">+</button>
 
       {showAdd && (
