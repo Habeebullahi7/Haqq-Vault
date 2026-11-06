@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -14,57 +13,37 @@ export default function LoginPage() {
     if (saved) window.location.href = '/vault'
   }, [])
 
-  async function handleEmail(e: React.FormEvent) {
+  function handleEmail(e: React.FormEvent) {
     e.preventDefault()
     const cleanEmail = email.trim().toLowerCase()
     if (!cleanEmail.includes('@')) { setErrorMsg('Please enter a valid email address.'); return }
-    setLoading(true)
     setErrorMsg('')
-    const { data, error } = await supabase.from('haqq_users').select('email').eq('email', cleanEmail).maybeSingle()
-    if (error) {
-      setErrorMsg('Database Error: ' + error.message + ' - Please run the SQL in Supabase first.')
-      setLoading(false)
-      return
-    }
-    if (data) setMode('enter')
+    // Check if this email already has a PIN saved on this phone
+    const savedPin = localStorage.getItem('haqq_pin_' + cleanEmail)
+    if (savedPin) setMode('enter')
     else setMode('create')
-    setLoading(false)
   }
 
-  async function handlePin(e: React.FormEvent) {
+  function handlePin(e: React.FormEvent) {
     e.preventDefault()
     if (pin.length !== 4) { setErrorMsg('PIN must be 4 digits.'); return }
     setLoading(true)
-    setErrorMsg('')
     const cleanEmail = email.trim().toLowerCase()
 
     if (mode === 'create') {
-      const { error } = await supabase.from('haqq_users').insert({ email: cleanEmail, pin: pin })
-      if (error) {
-        // If email already exists, just log them in instead of error
-        if (error.message.includes('duplicate') || error.code === '23505') {
-          setMode('enter')
-          setErrorMsg('This email already has a PIN. Please enter your PIN.')
-          setLoading(false)
-          return
-        }
-        setErrorMsg('Database Error: ' + error.message)
-        setLoading(false)
-        return
-      }
+      localStorage.setItem('haqq_pin_' + cleanEmail, pin)
       localStorage.setItem('haqq_user', cleanEmail)
       window.location.href = '/vault'
     } else {
-      const { data, error } = await supabase.from('haqq_users').select('pin').eq('email', cleanEmail).maybeSingle()
-      if (error) { setErrorMsg('Database Error: ' + error.message); setLoading(false); return }
-      if (data && data.pin === pin) {
+      const savedPin = localStorage.getItem('haqq_pin_' + cleanEmail)
+      if (savedPin === pin) {
         localStorage.setItem('haqq_user', cleanEmail)
         window.location.href = '/vault'
       } else {
         setErrorMsg('Wrong PIN. Please try again.')
+        setLoading(false)
       }
     }
-    setLoading(false)
   }
 
   return (
@@ -84,9 +63,8 @@ export default function LoginPage() {
           <form onSubmit={handleEmail} style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <label style={{ fontSize: 11, fontWeight: 800, color: '#64748b' }}>YOUR EMAIL ADDRESS</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g. musa@gmail.com" required style={{ padding: 16, borderRadius: 14, border: '2px solid #e2e8f0', fontSize: 16, width: '100%', boxSizing: 'border-box', background: '#f8fafc', color: '#0f172a' }} />
-            <button disabled={loading} style={{ padding: 16, borderRadius: 14, background: '#0f172a', color: '#fff', fontSize: 16, fontWeight: 800, border: 'none', cursor: 'pointer' }}>{loading ? 'Checking...' : 'Continue'}</button>
+            <button style={{ padding: 16, borderRadius: 14, background: '#0f172a', color: '#fff', fontSize: 16, fontWeight: 800, border: 'none', cursor: 'pointer' }}>Continue</button>
             {errorMsg && <p style={{ background: '#fef2f2', color: '#dc2626', padding: 12, borderRadius: 12, fontSize: 13, textAlign: 'center' }}>{errorMsg}</p>}
-            <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>First time? You will create a PIN.<br/>Returning? You will enter your PIN.</p>
           </form>
         )}
         {(mode === 'create' || mode === 'enter') && (
@@ -94,7 +72,7 @@ export default function LoginPage() {
             <p style={{ fontWeight: 800, fontSize: 15, margin: 0 }}>{mode === 'create' ? 'Create Your 4-Digit PIN' : 'Welcome Back'}</p>
             <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>{mode === 'create' ? 'Choose a PIN you will remember.' : `Enter your PIN for ${email}`}</p>
             <input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ''))} placeholder="••••" required autoFocus style={{ padding: 16, borderRadius: 14, border: '2px solid #e2e8f0', fontSize: 24, letterSpacing: 12, textAlign: 'center', width: '100%', boxSizing: 'border-box', background: '#f8fafc', color: '#0f172a', fontWeight: 900 }} />
-            <button disabled={loading} style={{ padding: 16, borderRadius: 14, background: '#0f172a', color: '#fff', fontSize: 16, fontWeight: 800, border: 'none', cursor: 'pointer' }}>{loading ? 'Please wait...' : mode === 'create' ? 'Create PIN & Enter Vault' : 'Enter Vault'}</button>
+            <button disabled={loading} style={{ padding: 16, borderRadius: 14, background: '#0f172a', color: '#fff', fontSize: 16, fontWeight: 800, border: 'none', cursor: 'pointer' }}>{loading ? 'Entering...' : mode === 'create' ? 'Create PIN & Enter Vault' : 'Enter Vault'}</button>
             {errorMsg && <p style={{ background: '#fef2f2', color: '#dc2626', padding: 12, borderRadius: 12, fontSize: 13 }}>{errorMsg}</p>}
             <button type="button" onClick={() => { setMode('check'); setPin(''); setErrorMsg('') }} style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', cursor: 'pointer' }}>Use a different email</button>
           </form>
@@ -102,4 +80,4 @@ export default function LoginPage() {
       </div>
     </div>
   )
-      }
+            }
