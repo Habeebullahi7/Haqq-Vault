@@ -1,7 +1,5 @@
 import './globals.css'
-import Navbar from '@/components/Navbar'
-import BottomNav from '@/components/BottomNav'
-import TopAppBar from '@/components/TopAppBar'
+import LayoutShell from '@/components/LayoutShell'
 import RegisterSW from '@/components/RegisterSW'
 
 export const metadata = { 
@@ -17,13 +15,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }){
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
       </head>
-      <body className="bg-[#0A1931] text-[#E8EDF5] min-h-screen pb-[96px] md:pb-0 antialiased">
-        <TopAppBar/>
-        <Navbar/>
-        <main className="max-w-6xl mx-auto px-4 py-6">
-          {children}
-        </main>
-        <BottomNav/>
+      <body className="bg-[#0A1931] text-[#E8EDF5] min-h-screen antialiased">
+        <LayoutShell>{children}</LayoutShell>
         <RegisterSW/>
         <style>{`
           ::-webkit-scrollbar { width: 8px; }
