@@ -88,4 +88,4 @@ export default function LoginPage() {
       <p style={{ textAlign: 'center', color: '#64748b', fontSize: 12, marginTop: 16, maxWidth: 340, lineHeight: 1.6 }}>Next time you open HAQQ, you will stay logged in. If you log out, just enter your email and PIN again.</p>
     </div>
   )
-}
+            }
