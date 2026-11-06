@@ -20,7 +20,12 @@ export default function LoginPage() {
     if (!cleanEmail.includes('@')) { setErrorMsg('Please enter a valid email address.'); return }
     setLoading(true)
     setErrorMsg('')
-    const { data } = await supabase.from('haqq_users').select('email').eq('email', cleanEmail).maybeSingle()
+    const { data, error } = await supabase.from('haqq_users').select('email').eq('email', cleanEmail).maybeSingle()
+    if (error) {
+      setErrorMsg('Database Error: ' + error.message + ' - Please run the SQL in Supabase first.')
+      setLoading(false)
+      return
+    }
     if (data) setMode('enter')
     else setMode('create')
     setLoading(false)
@@ -32,13 +37,26 @@ export default function LoginPage() {
     setLoading(true)
     setErrorMsg('')
     const cleanEmail = email.trim().toLowerCase()
+
     if (mode === 'create') {
       const { error } = await supabase.from('haqq_users').insert({ email: cleanEmail, pin: pin })
-      if (error) { setErrorMsg('Something went wrong. Please try again.'); setLoading(false); return }
+      if (error) {
+        // If email already exists, just log them in instead of error
+        if (error.message.includes('duplicate') || error.code === '23505') {
+          setMode('enter')
+          setErrorMsg('This email already has a PIN. Please enter your PIN.')
+          setLoading(false)
+          return
+        }
+        setErrorMsg('Database Error: ' + error.message)
+        setLoading(false)
+        return
+      }
       localStorage.setItem('haqq_user', cleanEmail)
       window.location.href = '/vault'
     } else {
-      const { data } = await supabase.from('haqq_users').select('pin').eq('email', cleanEmail).maybeSingle()
+      const { data, error } = await supabase.from('haqq_users').select('pin').eq('email', cleanEmail).maybeSingle()
+      if (error) { setErrorMsg('Database Error: ' + error.message); setLoading(false); return }
       if (data && data.pin === pin) {
         localStorage.setItem('haqq_user', cleanEmail)
         window.location.href = '/vault'
@@ -81,11 +99,7 @@ export default function LoginPage() {
             <button type="button" onClick={() => { setMode('check'); setPin(''); setErrorMsg('') }} style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', cursor: 'pointer' }}>Use a different email</button>
           </form>
         )}
-        <div style={{ marginTop: 18, borderTop: '1px solid #f1f5f9', paddingTop: 14, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8' }}>
-          <span>Private</span><span>Quran 2:282</span><span>Secure PIN Login</span>
-        </div>
       </div>
-      <p style={{ textAlign: 'center', color: '#64748b', fontSize: 12, marginTop: 16, maxWidth: 340, lineHeight: 1.6 }}>Next time you open HAQQ, you will stay logged in. If you log out, just enter your email and PIN again.</p>
     </div>
   )
-            }
+      }
