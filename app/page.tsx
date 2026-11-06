@@ -48,7 +48,7 @@ export default function WelcomePage() {
           Your private Islamic debt vault. Record who you owe, who owes you, set reminders, and keep your trust with Allah. Secure, encrypted, for His sake.
         </p>
         <div className="mt-9 flex flex-col sm:flex-row justify-center gap-3">
-          <a href="/login" className="px-8 py-4 bg-[#D4AF37] text-[#0A1931] rounded-full font-bold text-[15px] shadow-lg shadow-[#D4AF37]/20 hover:scale-105 transition-transform">Enter Vault — It's Free</a>
+          <a href="/login" className="px-8 py-4 bg-[#D4AF37] text-[#0A1931] rounded-full font-bold text-[15px] shadow-lg shadow-[#D4AF37]/20 hover:scale-105 transition-transform">Enter Vault — It&apos;s Free</a>
           <a href="#how" className="px-8 py-4 bg-white/10 backdrop-blur border border-white/10 rounded-full font-semibold text-[15px] hover:bg-white/20 transition-colors">How it Works</a>
         </div>
 
