@@ -1,51 +1,91 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+  const checkedOnce = useRef(false)
 
+  // Check login ONCE only - no more flicker / reload
   useEffect(() => {
-    async function check() {
-      const { data } = await supabase.auth.getSession()
+    if (checkedOnce.current) return
+    checkedOnce.current = true
+    supabase.auth.getSession().then(({ data }) => {
       if (data.session) window.location.href = '/vault'
-    }
-    setTimeout(check, 1000)
+    })
   }, [])
 
   async function sendLink(e: React.FormEvent) {
     e.preventDefault()
+    if (!email.includes('@')) { setErrorMsg('Put correct Gmail, e.g. musa@gmail.com'); return }
     setLoading(true)
+    setErrorMsg('')
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + '/vault' }
     })
-    if (error) alert(error.message)
+    if (error) setErrorMsg(error.message)
     else setSent(true)
     setLoading(false)
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: '40px auto', padding: 20, background: '#fff', minHeight: '80vh' }}>
-      <h1 style={{ textAlign: 'center', fontSize: 34, fontWeight: '900', color: '#000' }}>HAQQ</h1>
-      <p style={{ textAlign: 'center', color: '#555' }}>Enter your email to continue</p>
-      {!sent ? (
-        <form onSubmit={sendLink} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your Gmail" required style={{ padding: 14, borderRadius: 10, border: '1px solid #ccc', fontSize: 16, width: '100%' }} />
-          <button disabled={loading} style={{ padding: 15, borderRadius: 10, background: '#000', color: '#fff', fontSize: 16, fontWeight: 'bold', border: 'none' }}>
-            {loading ? 'Sending...' : 'Send Login Link →'}
-          </button>
-        </form>
-      ) : (
-        <div style={{ textAlign: 'center', background: '#f0fdf4', border: '2px solid #000', borderRadius: 10, padding: 20 }}>
-          <p style={{ color: '#000', fontWeight: 'bold' }}>Check your Gmail!</p>
-          <p style={{ color: '#333', fontSize: 14 }}>We sent link to <b>{email}</b><br/>Open email and click <b>Sign in</b></p>
-          <button onClick={() => setSent(false)} style={{ background: 'none', border: 'none', color: '#0070f3', textDecoration: 'underline' }}>Use different email</button>
+    <div style={{ minHeight: '100vh', background: '#0f172a', color: '#fff', padding: '0 20px 120px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {/* TOP */}
+      <div style={{ width: '100%', maxWidth: 420, padding: '20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontWeight: 900, letterSpacing: 3, fontSize: 16 }}>HAQQ <span style={{ color: '#D4AF37' }}>🔒</span></span>
+        <span style={{ fontSize: 11, background: '#D4AF37', color: '#0f172a', padding: '6px 12px', borderRadius: 20, fontWeight: 800 }}>SECURE VAULT</span>
+      </div>
+
+      {/* CARD */}
+      <div style={{ width: '100%', maxWidth: 420, background: '#fff', color: '#0f172a', borderRadius: 24, padding: 24, marginTop: 10, boxShadow: '0 20px 50px rgba(0,0,0,0.4)', border: '2px solid #D4AF37' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 44 }}>🔐</div>
+          <h1 style={{ fontSize: 32, fontWeight: 900, margin: '8px 0 0', letterSpacing: 2 }}>HAQQ</h1>
+          <p style={{ color: '#64748b', fontSize: 14, margin: '6px 0 0' }}>Your private Haqq & Wasiyyah Vault</p>
+          <p style={{ fontSize: 12, color: '#D4AF37', fontWeight: 800, marginTop: 8, background: '#fefce8', padding: '6px 10px', borderRadius: 20, display: 'inline-block' }}>✨ NO PASSWORD NEEDED</p>
         </div>
-      )}
-      <p style={{ textAlign: 'center', color: '#888', fontSize: 12, marginTop: 20 }}>No password. Just click link from Gmail.</p>
+
+        {!sent ? (
+          <form onSubmit={sendLink} style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <label style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: '#64748b' }}>YOUR GMAIL</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="e.g. musa@gmail.com"
+              autoComplete="email"
+              inputMode="email"
+              autoFocus={false}
+              required
+              style={{ padding: 16, borderRadius: 14, border: '2px solid #e2e8f0', fontSize: 16, width: '100%', boxSizing: 'border-box', outline: 'none', background: '#f8fafc', color: '#0f172a', fontWeight: 600 }}
+            />
+            <button type="submit" disabled={loading} style={{ padding: 16, borderRadius: 14, background: '#0f172a', color: '#fff', fontSize: 16, fontWeight: 800, border: 'none', cursor: 'pointer', opacity: loading ? 0.7 : 1 }}>
+              {loading ? 'Sending Link...' : 'Send Login Link →'}
+            </button>
+            {errorMsg && <p style={{ background: '#fef2f2', color: '#dc2626', padding: 12, borderRadius: 12, fontSize: 13, fontWeight: 600, textAlign: 'center' }}>{errorMsg}</p>}
+            <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>We go send link to your Gmail.<br/>Open Gmail → Click <b style={{ color: '#0f172a' }}>Sign in</b> → You enter Vault.</p>
+          </form>
+        ) : (
+          <div style={{ marginTop: 22, textAlign: 'center', background: '#f0fdf4', border: '2px solid #22c55e', borderRadius: 16, padding: 20 }}>
+            <div style={{ fontSize: 36 }}>📧</div>
+            <p style={{ fontWeight: 900, fontSize: 16, margin: '8px 0 4px' }}>Check your Gmail!</p>
+            <p style={{ color: '#475569', fontSize: 14, lineHeight: 1.5 }}>We sent link to<br/><b>{email}</b><br/>Open email titled <b>“Your sign-in link”</b> and click <b>Sign in</b>.<br/><span style={{ fontSize: 12 }}>Check Spam if you no see am.</span></p>
+            <button onClick={() => { setSent(false); setEmail('') }} style={{ marginTop: 12, background: '#fff', border: '1px solid #0f172a', padding: '10px 16px', borderRadius: 20, fontWeight: 800, cursor: 'pointer' }}>Use different email</button>
+          </div>
+        )}
+
+        <div style={{ marginTop: 18, borderTop: '1px solid #f1f5f9', paddingTop: 14, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8' }}>
+          <span>🔒 Private</span><span>🕌 Quran 2:282</span><span>⚡ 10 sec login</span>
+        </div>
+      </div>
+
+      <p style={{ textAlign: 'center', color: '#64748b', fontSize: 12, marginTop: 16, maxWidth: 340, lineHeight: 1.6 }}>
+        Next time you open HAQQ, e go remember you. No need login again unless you logout.
+      </p>
     </div>
   )
 }
