@@ -1,173 +1,134 @@
-"use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
+'use client'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { useState } from 'react'
+import { createClient } from '@/lib/supabase-client'
+import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [tab, setTab] = useState<"google" | "emailOtp">("google");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [attempts, setAttempts] = useState(0);
-  const [countdown, setCountdown] = useState(0);
-  const [showOld, setShowOld] = useState(false);
-  const [oldPassword, setOldPassword] = useState("");
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'otp'>('signin')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.push("/vault");
-    });
-  }, [router]);
+  const supabase = createClient()
+  const router = useRouter()
 
-  useEffect(() => {
-    if (countdown > 0) {
-      const t = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(t);
-    }
-  }, [countdown]);
-
-  // 1. GMAIL - VERIFIED BY GOOGLE
-  async function loginWithGoogle() {
-    setLoading(true);
+  const handleGoogle = async () => {
+    setLoading(true)
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: { prompt: "select_account" },
-      },
-    });
-    if (error) { alert("Google login failed. Try again."); setLoading(false); }
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/vault` }
+    })
+    if (error) setMessage(error.message)
+    setLoading(false)
   }
 
-  // 2. EMAIL OTP - FREE, NO TWILIO, NO TERMII
-  async function sendEmailOtp() {
-    if (!email.includes("@")) return alert("Enter valid email e.g. habeeb@gmail.com");
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        shouldCreateUser: true,
-        data: name.trim() ? { full_name: name.trim() } : undefined,
-      },
-    });
-    setLoading(false);
-    if (error) return alert("Could not send code. " + error.message);
-    setOtpSent(true);
-    setCountdown(60);
-    setAttempts(0);
-    alert(`6-digit code sent to ${email}. Check inbox + spam.`);
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
+    if (mode === 'signin') {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) setMessage(error.message)
+      else router.push('/vault')
+    }
+    if (mode === 'signup') {
+      const { error } = await supabase.auth.signUp({
+        email, password,
+        options: { data: { full_name: fullName } }
+      })
+      if (error) setMessage(error.message)
+      else setMessage('Account created. Please check your email to confirm your account, then sign in.')
+    }
+    if (mode === 'forgot') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/login`
+      })
+      if (error) setMessage(error.message)
+      else setMessage('Password reset link sent to your email.')
+    }
+    setLoading(false)
   }
 
-  async function verifyEmailOtp() {
-    if (attempts >= 3) return alert("Too many wrong attempts. Request new code.");
-    if (otp.length !== 6) return alert("OTP must be 6 digits.");
-    setLoading(true);
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token: otp,
-      type: "email",
-    });
-    setLoading(false);
-    if (error) {
-      setAttempts(attempts + 1);
-      return alert(`Wrong code. ${3 - (attempts + 1)} tries left.`);
-    }
-    if (data.session) {
-      localStorage.setItem("haqq-last-login", new Date().toISOString());
-      localStorage.setItem("haqq-login-method", "email-otp");
-      router.push("/vault");
-    }
+  const sendOtp = async () => {
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithOtp({ email })
+    if (error) setMessage(error.message)
+    else setMessage('6-digit code sent to your email.')
+    setLoading(false)
   }
 
-  // OLD USERS ONLY
-  async function loginOldPassword(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: oldPassword,
-      });
-      if (error) throw error;
-      router.push("/vault");
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setLoading(false);
-    }
+  const verifyOtp = async () => {
+    setLoading(true)
+    const { error } = await supabase.auth.verifyOtp({ email, token: otpCode, type: 'email' })
+    if (error) setMessage(error.message)
+    else router.push('/vault')
+    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0A1931] px-4 py-10">
-      <div className="w-full max-w-md bg-white rounded-[24px] shadow-2xl p-8">
-        <Link href="/" className="block text-center text-[11px] tracking-widest opacity-50 mb-4">HAQQ • QURAN 2:282</Link>
-        <h1 className="text-2xl font-black text-center text-[#0A1931]">Welcome to HAQQ</h1>
-        <p className="text-center text-gray-500 text-sm mb-6 mt-2">Only verified Gmail or Email OTP can unlock your encrypted vault. No guest, no fake account.</p>
-
-        <div className="flex bg-gray-100 rounded-full p-1 mb-5">
-          <button onClick={() => { setTab("google"); setOtpSent(false); }} className={`flex-1 py-2.5 rounded-full font-bold text-sm ${tab === "google" ? "bg-[#0A1931] text-white" : "text-gray-600"}`}>Gmail</button>
-          <button onClick={() => { setTab("emailOtp"); setOtpSent(false); }} className={`flex-1 py-2.5 rounded-full font-bold text-sm ${tab === "emailOtp" ? "bg-[#0A1931] text-white" : "text-gray-600"}`}>Email OTP</button>
+    <div className="min-h-screen bg-[#0A1A2F] flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl">
+        <div className="text-center mb-6">
+          <p className="text-xs tracking-[0.2em] text-slate-400 font-semibold">HAQQ • QURAN 2:282</p>
+          <h1 className="text-3xl font-bold text-[#0A1A2F] mt-2">Welcome to HAQQ</h1>
+          <p className="text-slate-500 text-sm mt-2">Securely access your vault and Wasiyyah. Your data is encrypted and private.</p>
         </div>
 
-        {tab === "google" && (
-          <div>
-            <input placeholder="Your Name e.g. Habeeb (if new)" value={name} onChange={e=>setName(e.target.value)} className="w-full px-4 py-3.5 rounded-xl border border-black/10 bg-gray-50 text-black font-medium mb-3" />
-            <button onClick={loginWithGoogle} disabled={loading} className="w-full py-3.5 rounded-xl bg-white border-2 border-[#0A1931] text-[#0A1931] font-bold text-[15px] flex items-center justify-center gap-2">
-              <span className="w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[12px] font-black">G</span>
-              {loading ? "Connecting to Google..." : "Continue with Gmail"}
-            </button>
-            <p className="text-[11px] text-gray-500 text-center mt-3 leading-relaxed">
-              ✓ Google go verify say na your real Gmail<br/>
-              ✓ We no go see your Gmail password<br/>
-              ✓ You must select account every time
-            </p>
-          </div>
-        )}
+        <div className="flex bg-slate-100 rounded-full p-1 mb-6">
+          <button onClick={() => setMode('signin')} className={`flex-1 py-2.5 rounded-full text-sm font-semibold ${mode === 'signin' ? 'bg-[#0A1A2F] text-white' : 'text-slate-600'}`}>Sign In</button>
+          <button onClick={() => setMode('signup')} className={`flex-1 py-2.5 rounded-full text-sm font-semibold ${mode === 'signup' ? 'bg-[#0A1A2F] text-white' : 'text-slate-600'}`}>Create Account</button>
+        </div>
 
-        {tab === "emailOtp" && (
-          <div className="space-y-3">
-            {!otpSent ? (
-              <>
-                <input placeholder="Your Name e.g. Habeeb" value={name} onChange={e=>setName(e.target.value)} className="w-full px-4 py-3.5 rounded-xl border border-black/10 bg-gray-50 text-black font-medium" />
-                <input type="email" placeholder="Email e.g. habeeb@gmail.com" value={email} onChange={e=>setEmail(e.target.value)} className="w-full px-4 py-3.5 rounded-xl border border-black/10 bg-gray-50 text-black" />
-                <button onClick={sendEmailOtp} disabled={loading} className="w-full py-3.5 rounded-xl bg-[#0A1931] text-white font-bold text-[15px]">{loading ? "Sending..." : "Send Email Code →"}</button>
-                <p className="text-[11px] text-gray-500 text-center">Free. Code go to your email, check spam too. Expires soon.</p>
-              </>
-            ) : (
-              <>
-                <p className="text-center text-sm font-bold">Code sent to {email}</p>
-                <input placeholder="• • • • • •" value={otp} onChange={e=>setOtp(e.target.value.replace(/[^0-9]/g,"").slice(0,6))} maxLength={6} inputMode="numeric" className="w-full px-4 py-3.5 rounded-xl border border-black/10 bg-gray-50 text-black font-black text-center text-[22px] tracking-[8px]" />
-                <button onClick={verifyEmailOtp} disabled={loading} className="w-full py-3.5 rounded-xl bg-green-600 text-white font-bold text-[15px]">{loading ? "Verifying..." : "Verify & Enter Vault →"}</button>
-                <div className="flex gap-2">
-                  <button onClick={()=>{setOtpSent(false); setOtp("")}} className="flex-1 py-2.5 rounded-xl border font-bold text-sm">Change Email</button>
-                  <button onClick={sendEmailOtp} disabled={countdown>0} className="flex-1 py-2.5 rounded-xl border font-bold text-sm">{countdown>0 ? `Resend in ${countdown}s` : "Resend"}</button>
-                </div>
-                {attempts>0 && <p className="text-[11px] text-red-500 text-center font-bold">{3-attempts} tries left. After 3 wrong, request new code.</p>}
-              </>
+        <button onClick={handleGoogle} disabled={loading} className="w-full border-2 border-slate-200 rounded-xl py-3.5 font-semibold flex items-center justify-center gap-2 hover:bg-slate-50">
+          <span className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center font-bold">G</span>
+          Continue with Google
+        </button>
+
+        <div className="flex items-center gap-3 my-5">
+          <div className="h-px bg-slate-200 flex-1" />
+          <span className="text-xs text-slate-400">OR WITH EMAIL</span>
+          <div className="h-px bg-slate-200 flex-1" />
+        </div>
+
+        {mode !== 'otp' ? (
+          <form onSubmit={handleEmailAuth} className="space-y-3">
+            {mode === 'signup' && (
+              <input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Full Name" required className="w-full border border-slate-200 rounded-xl px-4 py-3.5 outline-none focus:border-[#0A1A2F]" />
             )}
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" required className="w-full border border-slate-200 rounded-xl px-4 py-3.5 outline-none focus:border-[#0A1A2F]" />
+            {mode !== 'forgot' && (
+              <div className="relative">
+                <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Password (min 8 characters)" required minLength={8} className="w-full border border-slate-200 rounded-xl px-4 py-3.5 outline-none focus:border-[#0A1A2F]" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-3.5 text-xs font-semibold text-slate-500">{showPassword ? 'HIDE' : 'SHOW'}</button>
+              </div>
+            )}
+            <button disabled={loading} className="w-full bg-[#0A1A2F] text-white rounded-xl py-3.5 font-semibold">
+              {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
+            </button>
+          </form>
+        ) : (
+          <div className="space-y-3">
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" className="w-full border border-slate-200 rounded-xl px-4 py-3.5 outline-none" />
+            <button onClick={sendOtp} disabled={loading} className="w-full bg-[#0A1A2F] text-white rounded-xl py-3.5 font-semibold">Send OTP Code</button>
+            <input value={otpCode} onChange={e => setOtpCode(e.target.value)} placeholder="Enter 6-digit code" className="w-full border border-slate-200 rounded-xl px-4 py-3.5 outline-none text-center tracking-[0.3em]" />
+            <button onClick={verifyOtp} disabled={loading} className="w-full border-2 border-[#0A1A2F] rounded-xl py-3.5 font-semibold">Verify & Sign In</button>
           </div>
         )}
 
-        <button onClick={()=>setShowOld(!showOld)} className="w-full mt-4 text-[12px] text-gray-500 underline">{showOld ? "Hide old login" : "I get old Email + Password account?"}</button>
-        {showOld && (
-          <form onSubmit={loginOldPassword} className="space-y-3 mt-3 border-t pt-3">
-            <p className="text-[11px] bg-yellow-50 border border-yellow-200 p-3 rounded-xl text-yellow-800">Only for users wey don create account with Email + Password before. New users must use Gmail / Email OTP above.</p>
-            <input required type="email" placeholder="Old Email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full px-4 py-3.5 rounded-xl border border-black/10 bg-gray-50 text-black" />
-            <input required type="password" placeholder="Old Password" value={oldPassword} onChange={e=>setOldPassword(e.target.value)} className="w-full px-4 py-3.5 rounded-xl border border-black/10 bg-gray-50 text-black" />
-            <button disabled={loading} className="w-full py-3.5 rounded-xl bg-gray-800 text-white font-bold text-[15px]">{loading ? "Please wait..." : "Login with Old Password"}</button>
-          </form>
-        )}
-        <p className="text-center text-[11px] text-gray-400 mt-6">Secure • Encrypted • For His Sake<br/>Lost access? Use Gmail / Email OTP to recover. No need password.</p>
+        {message && <p className="mt-4 text-sm text-center bg-slate-50 border rounded-xl p-3 text-slate-700">{message}</p>}
+
+        <div className="flex justify-between mt-5 text-sm">
+          <button onClick={() => setMode(mode === 'otp' ? 'signin' : 'otp')} className="text-[#0A1A2F] font-semibold underline">{mode === 'otp' ? 'Use Password Instead' : 'Use Email OTP Instead'}</button>
+          <button onClick={() => setMode(mode === 'forgot' ? 'signin' : 'forgot')} className="text-slate-500 underline">{mode === 'forgot' ? 'Back to Sign In' : 'Forgot Password?'}</button>
+        </div>
+
+        <p className="text-center text-xs text-slate-400 mt-6">Secure • Encrypted • For His Sake<br />By continuing, you agree to HAQQ Terms & Privacy Policy.</p>
       </div>
     </div>
-  );
-}
+  )
+    }
