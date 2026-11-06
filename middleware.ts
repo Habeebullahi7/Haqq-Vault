@@ -33,10 +33,33 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect /vault - if no user, carry am go /login
-  if (!user && request.nextUrl.pathname.startsWith('/vault')) {
+  // === PROTECT WHOLE WASIYYAH + VAULT + ALL PRIVATE PAGES ===
+  const protectedRoutes = [
+    '/vault',
+    '/wasiyyah',
+    '/dashboard',
+    '/family',
+    '/documents',
+    '/settings',
+    '/profile',
+  ]
+
+  const pathname = request.nextUrl.pathname
+
+  const isProtected = protectedRoutes.some((route) =>
+    pathname === route || pathname.startsWith(route + '/')
+  )
+
+  if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    url.searchParams.set('next', pathname)
+    return NextResponse.redirect(url)
+  }
+
+  if (user && pathname === '/login') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/vault'
     return NextResponse.redirect(url)
   }
 
