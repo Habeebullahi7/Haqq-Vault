@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
@@ -11,20 +11,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [checking, setChecking] = useState(true)
-
-  // If user don already login before, carry am go Vault straight
-  useEffect(() => {
-    async function checkSession() {
-      const { data } = await supabase.auth.getSession()
-      if (data.session) {
-        window.location.href = '/vault'
-      } else {
-        setChecking(false)
-      }
-    }
-    checkSession()
-  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -45,38 +31,33 @@ export default function LoginPage() {
         setMessage('Account created! Now click Sign In below.')
         setIsSignup(false)
       }
-    } else {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password,
-      })
-      if (error) {
-        if (error.message.toLowerCase().includes('email not confirmed')) {
-          setMessage('Email not confirmed. Go Supabase > Users > Confirm this user, or turn OFF Confirm email.')
-        } else if (error.message.toLowerCase().includes('invalid login')) {
-          setMessage('Login failed: Wrong email or password. Try again or create new account.')
-        } else {
-          setMessage('Login failed: ' + error.message)
-        }
-      } else if (data.session) {
-        setMessage('Login successful! Entering Vault...')
-        // Force full reload - this na wetin dey fix "Sign in no carry me enter"
-        setTimeout(() => {
-          window.location.href = '/vault'
-        }, 800)
-      } else {
-        setMessage('Login failed: No session. Try again.')
-      }
+      setLoading(false)
+      return
     }
-    setLoading(false)
-  }
 
-  if (checking) {
-    return (
-      <div style={{ maxWidth: 400, margin: '60px auto', padding: 20, textAlign: 'center' }}>
-        <p style={{ color: '#000', fontSize: 16, fontWeight: 'bold' }}>Checking login...</p>
-      </div>
-    )
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password,
+    })
+    if (error) {
+      if (error.message.toLowerCase().includes('email not confirmed')) {
+        setMessage('Email not confirmed. Go Supabase > Users > Confirm this user, or turn OFF Confirm email.')
+      } else if (error.message.toLowerCase().includes('invalid login')) {
+        setMessage('Login failed: Wrong email or password. Try again or create new account.')
+      } else {
+        setMessage('Login failed: ' + error.message)
+      }
+      setLoading(false)
+      return
+    }
+
+    if (data.session) {
+      setMessage('Login successful! Entering Vault...')
+      window.location.href = '/vault'
+    } else {
+      setMessage('Login failed: No session. Try again.')
+      setLoading(false)
+    }
   }
 
   const inputStyle: React.CSSProperties = {
