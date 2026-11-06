@@ -4,141 +4,102 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
-  const [isSignup, setIsSignup] = useState(false)
-  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const [code, setCode] = useState('')
+  const [step, setStep] = useState<'email' | 'code'>('email')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function sendCode(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setMessage('')
-
     const cleanEmail = email.trim().toLowerCase()
-
-    if (isSignup) {
-      const { error } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password,
-        options: { data: { full_name: name } }
-      })
-      if (error) {
-        setMessage('Signup failed: ' + error.message)
-      } else {
-        setMessage('Account created! Now click Sign In below.')
-        setIsSignup(false)
-      }
-      setLoading(false)
-      return
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
-      password,
+      options: { shouldCreateUser: true }
     })
     if (error) {
-      if (error.message.toLowerCase().includes('email not confirmed')) {
-        setMessage('Email not confirmed. Go Supabase > Users > Confirm this user, or turn OFF Confirm email.')
-      } else if (error.message.toLowerCase().includes('invalid login')) {
-        setMessage('Login failed: Wrong email or password. Try again or create new account.')
-      } else {
-        setMessage('Login failed: ' + error.message)
-      }
+      setMessage('Failed: ' + error.message)
+    } else {
+      setMessage('Code sent to ' + cleanEmail + '. Check your Gmail / Spam.')
+      setStep('code')
+    }
+    setLoading(false)
+  }
+
+  async function verifyCode(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: code.trim(),
+      type: 'email'
+    })
+    if (error) {
+      setMessage('Wrong code: ' + error.message)
       setLoading(false)
       return
     }
-
     if (data.session) {
-      setMessage('Login successful! Entering Vault...')
+      setMessage('Welcome! Entering Vault...')
       window.location.href = '/vault'
-    } else {
-      setMessage('Login failed: No session. Try again.')
-      setLoading(false)
     }
+  }
+
+  async function loginWithGoogle() {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/vault' }
+    })
   }
 
   const inputStyle: React.CSSProperties = {
-    padding: 14,
-    borderRadius: 10,
-    border: '1px solid #ccc',
-    fontSize: 16,
-    background: '#ffffff',
-    color: '#000000',
-    width: '100%',
-    boxSizing: 'border-box',
-    outline: 'none'
+    padding: 14, borderRadius: 10, border: '1px solid #ccc',
+    fontSize: 16, background: '#fff', color: '#000', width: '100%', boxSizing: 'border-box', outline: 'none'
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: '40px auto', padding: 20, minHeight: '80vh', background: '#ffffff' }}>
-      <h1 style={{ textAlign: 'center', fontSize: 34, fontWeight: '900', color: '#000000', marginBottom: 4 }}>HAQQ</h1>
-      <p style={{ textAlign: 'center', color: '#333333', marginBottom: 22, fontSize: 16 }}>
-        {isSignup ? 'Create your account' : 'Welcome back'}
+    <div style={{ maxWidth: 400, margin: '40px auto', padding: 20, minHeight: '80vh', background: '#fff' }}>
+      <h1 style={{ textAlign: 'center', fontSize: 34, fontWeight: '900', color: '#000' }}>HAQQ</h1>
+      <p style={{ textAlign: 'center', color: '#555', marginBottom: 20, fontSize: 16 }}>
+        {step === 'email' ? 'Enter your email to continue' : 'Enter the 6-digit code from your email'}
       </p>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {isSignup && (
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Full Name"
-            required
-            style={inputStyle}
-          />
-        )}
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
-          required
-          style={inputStyle}
-        />
-        <div style={{ position: 'relative' }}>
-          <input
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-            style={{ ...inputStyle, paddingRight: 60 }}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#0070f3', fontSize: 13, fontWeight: 'bold', cursor: 'pointer' }}
-          >
-            {showPassword ? 'Hide' : 'Show'}
+      {step === 'email' ? (
+        <form onSubmit={sendCode} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your Gmail" required style={inputStyle} />
+          <button type="submit" disabled={loading} style={{ padding: 15, borderRadius: 10, background: '#000', color: '#fff', fontSize: 16, fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
+            {loading ? 'Sending...' : 'Send Login Code →'}
           </button>
-        </div>
+        </form>
+      ) : (
+        <form onSubmit={verifyCode} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" required style={{ ...inputStyle, textAlign: 'center', fontSize: 24, letterSpacing: 5 }} />
+          <button type="submit" disabled={loading} style={{ padding: 15, borderRadius: 10, background: '#000', color: '#fff', fontSize: 16, fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
+            {loading ? 'Checking...' : 'Verify & Enter Vault'}
+          </button>
+          <button type="button" onClick={() => setStep('email')} style={{ background: 'none', border: 'none', color: '#0070f3', cursor: 'pointer', textDecoration: 'underline' }}>
+            Use different email
+          </button>
+        </form>
+      )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{ padding: 15, borderRadius: 10, background: '#000000', color: '#ffffff', fontSize: 16, fontWeight: 'bold', border: 'none', cursor: 'pointer', width: '100%', opacity: loading ? 0.6 : 1 }}
-        >
-          {loading ? 'Please wait...' : isSignup ? 'Create Account' : 'Sign In'}
-        </button>
-      </form>
+      <div style={{ textAlign: 'center', color: '#999', margin: '20px 0 12px', fontSize: 13 }}>OR</div>
+
+      <button onClick={loginWithGoogle} style={{ width: '100%', padding: 14, borderRadius: 10, background: '#fff', color: '#000', border: '1px solid #000', fontSize: 15, fontWeight: 'bold', cursor: 'pointer' }}>
+        Continue with Google
+      </button>
 
       {message && (
-        <p style={{ marginTop: 16, textAlign: 'center', background: '#ffffff', color: '#000000', padding: 14, borderRadius: 10, fontSize: 15, fontWeight: 'bold', border: '2px solid #000000', lineHeight: 1.5 }}>
+        <p style={{ marginTop: 16, textAlign: 'center', background: '#fff', color: '#000', padding: 14, borderRadius: 10, fontSize: 15, fontWeight: 'bold', border: '2px solid #000', lineHeight: 1.5 }}>
           {message}
         </p>
       )}
 
-      <button
-        onClick={() => { setIsSignup(!isSignup); setMessage('') }}
-        style={{ marginTop: 16, width: '100%', background: 'none', border: 'none', color: '#0070f3', fontSize: 15, cursor: 'pointer', textDecoration: 'underline', fontWeight: 'bold' }}
-      >
-        {isSignup ? 'Already have account? Sign In' : "No account? Create Account"}
-      </button>
-
       <p style={{ textAlign: 'center', color: '#888', fontSize: 12, marginTop: 20 }}>
-        Your Wasiyyah is private & secure.
+        No password to remember. We send you a code each time.
       </p>
     </div>
   )
