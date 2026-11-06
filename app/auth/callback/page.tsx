@@ -1,20 +1,37 @@
-"use client";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+'use client'
+import { useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-
-export default function Callback() {
-  const router = useRouter();
+export default function AuthCallback() {
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    async function handle() {
+      // Supabase will read the link from the URL automatically
+      const { data } = await supabase.auth.getSession()
       if (data.session) {
-        localStorage.setItem("haqq-last-login", new Date().toISOString());
-        localStorage.setItem("haqq-login-method", "google");
-        router.push("/vault");
-      } else router.push("/login");
-    });
-  }, [router]);
-  return <div className="min-h-screen bg-[#0A1931] flex items-center justify-center text-white font-bold px-4 text-center">Verifying your Gmail... Please wait...</div>;
-}
+        window.location.href = '/vault'
+        return
+      }
+      // Wait for Supabase to process the hash link
+      const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+        if (session) {
+          window.location.href = '/vault'
+        }
+      })
+      // Fallback: if after 3 seconds still no session, go back to login
+      setTimeout(async () => {
+        const { data: retry } = await supabase.auth.getSession()
+        if (!retry.session) window.location.href = '/login'
+      }, 4000)
+      return () => listener.subscription.unsubscribe()
+    }
+    handle()
+  }, [])
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0f172a', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, textAlign: 'center' }}>
+      <div style={{ fontSize: 48 }}>🔐</div>
+      <h1 style={{ fontSize: 24, fontWeight: 900, marginTop: 12 }}>Verifying your login...</h1>
+      <p style={{ color: '#94a3b8', marginTop: 8 }}>Please wait, we are taking you to your Vault.</p>
+    </div>
+  )
+      }
