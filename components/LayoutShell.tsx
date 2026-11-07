@@ -6,15 +6,12 @@ import TopAppBar from '@/components/TopAppBar'
 
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-
-  // Pages where we should NOT show any nav - clean full screen
   const hideNav = pathname === '/'
 
   if (hideNav) {
     return <>{children}</>
   }
 
-  // Inside Vault and other pages - show nav normally
   return (
     <div className="min-h-screen pb-[110px] md:pb-0">
       <TopAppBar />
