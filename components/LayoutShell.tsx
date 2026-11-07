@@ -2,22 +2,24 @@
 import { usePathname } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
+import TopAppBar from '@/components/TopAppBar'
 
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   // Pages where we should NOT show any nav - clean full screen
-  const hideNav = pathname === '/' || pathname === '/login'
+  const hideNav = pathname === '/'
 
   if (hideNav) {
     return <>{children}</>
   }
 
-  // Inside Vault and other pages - show only the 2 floating navs
+  // Inside Vault and other pages - show nav normally
   return (
-    <div className="min-h-screen pb-[110px]">
+    <div className="min-h-screen pb-[110px] md:pb-0">
+      <TopAppBar />
       <Navbar />
-      <main className="max-w-6xl mx-auto px-4 pt-[84px] pb-6">
+      <main className="max-w-6xl mx-auto px-4 py-6">
         {children}
       </main>
       <BottomNav />
