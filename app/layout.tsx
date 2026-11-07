@@ -1,4 +1,7 @@
 import './globals.css'
+import Navbar from '@/components/Navbar'
+import BottomNav from '@/components/BottomNav'
+import TopAppBar from '@/components/TopAppBar'
 
 export const metadata = { 
   title: 'HAQQ - Rights Clearing Vault', 
@@ -10,16 +13,13 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }){
   return (
     <html lang="en">
-      <head>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-      </head>
-      <body style={{ margin: 0, padding: 0, background: '#0A1931', color: '#E8EDF5', fontFamily: 'Inter, system-ui, sans-serif' }}>
-        {children}
-        <style>{`
-          ::-webkit-scrollbar { width: 8px; }
-          ::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 4px; }
-          * { -webkit-tap-highlight-color: transparent; }
-        `}</style>
+      <body className="bg-[#0A1931] text-[#E8EDF5] min-h-screen pb-[96px] md:pb-0 antialiased">
+        <TopAppBar/>
+        <Navbar/>
+        <main className="max-w-6xl mx-auto px-4 py-6">
+          {children}
+        </main>
+        <BottomNav/>
       </body>
     </html>
   )
