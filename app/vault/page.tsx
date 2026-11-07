@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 type Debt = { id: number; title: string; amount: number; person: string; type: string; status: string }
 
 export default function VaultPage() {
-  const [userEmail, setUserEmail] = useState('')
+  const [userEmail, setUserEmail] = useState('guest@haqq.app')
   const [tab, setTab] = useState<'debts' | 'wasiyyah'>('debts')
   const [debts, setDebts] = useState<Debt[]>([])
   const [wasiyyah, setWasiyyah] = useState('')
@@ -17,8 +17,8 @@ export default function VaultPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const saved = localStorage.getItem('haqq_user')
-    if (!saved) { window.location.href = '/login'; return }
+    // No login for now - use saved email if e dey, if not use guest
+    const saved = localStorage.getItem('haqq_user') || 'guest@haqq.app'
     setUserEmail(saved)
     loadData(saved)
   }, [])
@@ -39,6 +39,8 @@ export default function VaultPage() {
     if (!error && data) {
       setDebts([data as Debt, ...debts])
       setTitle(''); setAmount(''); setPerson(''); setShowAdd(false)
+    } else if (error) {
+      alert('Could not save: ' + error.message)
     }
   }
 
@@ -61,9 +63,8 @@ export default function VaultPage() {
     alert('Wasiyyah Saved')
   }
 
-  function logout() {
-    localStorage.removeItem('haqq_user')
-    window.location.href = '/login'
+  function goHome() {
+    window.location.href = '/'
   }
 
   const totalOwe = debts.filter(d => d.type === 'I Owe' && d.status === 'Unpaid').reduce((s, d) => s + Number(d.amount), 0)
@@ -79,7 +80,7 @@ export default function VaultPage() {
             <div style={{ fontWeight: 900, letterSpacing: 3, fontSize: 18 }}>HAQQ 🔒</div>
             <div style={{ fontSize: 12, color: '#94a3b8' }}>{userEmail}</div>
           </div>
-          <button onClick={logout} style={{ background: '#fff', color: '#0f172a', border: 'none', padding: '8px 14px', borderRadius: 20, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Log Out</button>
+          <button onClick={goHome} style={{ background: '#fff', color: '#0f172a', border: 'none', padding: '8px 14px', borderRadius: 20, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Home</button>
         </div>
 
         <div style={{ background: '#fff', color: '#0f172a', borderRadius: 20, padding: 20, border: '2px solid #D4AF37' }}>
@@ -147,4 +148,4 @@ export default function VaultPage() {
       </div>
     </div>
   )
-            }
+  }
