@@ -1,6 +1,4 @@
 import './globals.css'
-import LayoutShell from '@/components/LayoutShell'
-import RegisterSW from '@/components/RegisterSW'
 
 export const metadata = { 
   title: 'HAQQ - Rights Clearing Vault', 
@@ -15,12 +13,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }){
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
       </head>
-      <body className="bg-[#0A1931] text-[#E8EDF5] min-h-screen antialiased">
-        <LayoutShell>{children}</LayoutShell>
-        <RegisterSW/>
+      <body style={{ margin: 0, padding: 0, background: '#0A1931', color: '#E8EDF5', fontFamily: 'Inter, system-ui, sans-serif' }}>
+        {children}
         <style>{`
           ::-webkit-scrollbar { width: 8px; }
           ::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 4px; }
+          * { -webkit-tap-highlight-color: transparent; }
         `}</style>
       </body>
     </html>
