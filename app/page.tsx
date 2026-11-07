@@ -20,8 +20,8 @@ export default function WelcomePage() {
         <div className="hidden md:flex items-center gap-8 text-sm text-gray-300">
           <a href="#how" className="hover:text-white">How it Works</a>
           <a href="#support" className="hover:text-white">Support</a>
-          <a href="/login" className="hover:text-white">My Vault</a>
-          <a href="/login" className="bg-[#D4AF37] text-[#0A1931] px-6 py-2.5 rounded-full font-bold hover:scale-105 transition-transform">Open Vault</a>
+          <a href="/vault" className="hover:text-white">My Vault</a>
+          <a href="/vault" className="bg-[#D4AF37] text-[#0A1931] px-6 py-2.5 rounded-full font-bold hover:scale-105 transition-transform">Open Vault</a>
         </div>
         <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden">
           <div className="space-y-1.5"><div className="w-6 h-0.5 bg-white"></div><div className="w-6 h-0.5 bg-white"></div><div className="w-6 h-0.5 bg-[#D4AF37]"></div></div>
@@ -32,7 +32,7 @@ export default function WelcomePage() {
         <div className="relative z-20 md:hidden bg-[#0A1931] border-y border-[#D4AF37]/10 px-6 py-6 space-y-4">
           <a href="#how" onClick={()=>setMenuOpen(false)} className="block py-2 text-gray-300">How it Works</a>
           <a href="#support" onClick={()=>setMenuOpen(false)} className="block py-2 text-gray-300">Support</a>
-          <a href="/login" onClick={()=>setMenuOpen(false)} className="block mt-4 bg-[#D4AF37] text-[#0A1931] text-center py-3.5 rounded-xl font-bold">Open Vault 🔒</a>
+          <a href="/vault" onClick={()=>setMenuOpen(false)} className="block mt-4 bg-[#D4AF37] text-[#0A1931] text-center py-3.5 rounded-xl font-bold">Open Vault 🔒</a>
         </div>
       )}
 
@@ -48,7 +48,7 @@ export default function WelcomePage() {
           Your private Islamic debt vault. Record who you owe, who owes you, set reminders, and keep your trust with Allah. Secure, encrypted, for His sake.
         </p>
         <div className="mt-9 flex flex-col sm:flex-row justify-center gap-3">
-          <a href="/login" className="px-8 py-4 bg-[#D4AF37] text-[#0A1931] rounded-full font-bold text-[15px] shadow-lg shadow-[#D4AF37]/20 hover:scale-105 transition-transform">Enter Vault — It&apos;s Free</a>
+          <a href="/vault" className="px-8 py-4 bg-[#D4AF37] text-[#0A1931] rounded-full font-bold text-[15px] shadow-lg shadow-[#D4AF37]/20 hover:scale-105 transition-transform">Enter Vault — It&apos;s Free</a>
           <a href="#how" className="px-8 py-4 bg-white/10 backdrop-blur border border-white/10 rounded-full font-semibold text-[15px] hover:bg-white/20 transition-colors">How it Works</a>
         </div>
 
@@ -81,7 +81,7 @@ export default function WelcomePage() {
       </section>
 
       <footer id="support" className="relative z-10 bg-[#0A1931] border-t border-[#D4AF37]/10 text-center py-8 text-xs text-[#E8EDF5]/50">
-        Built for Amanah • Quran 2:282 • <a href="/login" className="text-[#D4AF37] font-bold underline">Open Vault</a>
+        Built for Amanah • Quran 2:282 • <a href="/vault" className="text-[#D4AF37] font-bold underline">Open Vault</a>
       </footer>
     </div>
   )
