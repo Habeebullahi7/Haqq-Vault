@@ -1,8 +1,25 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function WelcomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    async function check() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setIsLoggedIn(true);
+    }
+    check();
+  }, []);
+
+  function handleVault() {
+    if (isLoggedIn) router.push("/home");
+    else router.push("/login");
+  }
 
   return (
     <div className="min-h-screen bg-[#0A1931] text-white overflow-x-hidden">
@@ -20,8 +37,8 @@ export default function WelcomePage() {
         <div className="hidden md:flex items-center gap-8 text-sm text-gray-300">
           <a href="#how" className="hover:text-white">How it Works</a>
           <a href="#support" className="hover:text-white">Support</a>
-          <a href="/vault" className="hover:text-white">My Vault</a>
-          <a href="/vault" className="bg-[#D4AF37] text-[#0A1931] px-6 py-2.5 rounded-full font-bold hover:scale-105 transition-transform">Open Vault</a>
+          <button onClick={handleVault} className="hover:text-white">My Vault</button>
+          <button onClick={handleVault} className="bg-[#D4AF37] text-[#0A1931] px-6 py-2.5 rounded-full font-bold hover:scale-105 transition-transform">Open Vault</button>
         </div>
         <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden">
           <div className="space-y-1.5"><div className="w-6 h-0.5 bg-white"></div><div className="w-6 h-0.5 bg-white"></div><div className="w-6 h-0.5 bg-[#D4AF37]"></div></div>
@@ -32,7 +49,7 @@ export default function WelcomePage() {
         <div className="relative z-20 md:hidden bg-[#0A1931] border-y border-[#D4AF37]/10 px-6 py-6 space-y-4">
           <a href="#how" onClick={()=>setMenuOpen(false)} className="block py-2 text-gray-300">How it Works</a>
           <a href="#support" onClick={()=>setMenuOpen(false)} className="block py-2 text-gray-300">Support</a>
-          <a href="/vault" onClick={()=>setMenuOpen(false)} className="block mt-4 bg-[#D4AF37] text-[#0A1931] text-center py-3.5 rounded-xl font-bold">Open Vault 🔒</a>
+          <button onClick={handleVault} className="block w-full mt-4 bg-[#D4AF37] text-[#0A1931] text-center py-3.5 rounded-xl font-bold">Open Vault 🔒</button>
         </div>
       )}
 
@@ -48,7 +65,7 @@ export default function WelcomePage() {
           Your private Islamic debt vault. Record who you owe, who owes you, set reminders, and keep your trust with Allah. Secure, encrypted, for His sake.
         </p>
         <div className="mt-9 flex flex-col sm:flex-row justify-center gap-3">
-          <a href="/vault" className="px-8 py-4 bg-[#D4AF37] text-[#0A1931] rounded-full font-bold text-[15px] shadow-lg shadow-[#D4AF37]/20 hover:scale-105 transition-transform">Enter Vault — It&apos;s Free</a>
+          <button onClick={handleVault} className="px-8 py-4 bg-[#D4AF37] text-[#0A1931] rounded-full font-bold text-[15px] shadow-lg shadow-[#D4AF37]/20 hover:scale-105 transition-transform">Enter Vault — It&apos;s Free</button>
           <a href="#how" className="px-8 py-4 bg-white/10 backdrop-blur border border-white/10 rounded-full font-semibold text-[15px] hover:bg-white/20 transition-colors">How it Works</a>
         </div>
 
@@ -57,6 +74,11 @@ export default function WelcomePage() {
           <div className="mt-4 space-y-3">
             <div className="flex justify-between bg-[#0A1931] p-3 rounded-xl border border-white/5"><span className="text-sm font-bold">Musa</span><span className="text-sm font-bold text-red-400">₦50,000 • I Owe</span></div>
             <div className="flex justify-between bg-[#D4AF37]/10 p-3 rounded-xl border border-[#D4AF37]/30"><span className="text-sm font-bold">Ahmed</span><span className="text-sm font-bold text-green-400">₦20,000 • Owes Me</span></div>
+          </div>
+          {/* NEW: Daily Check + Welfare teaser */}
+          <div className="mt-3 bg-white/5 p-3 rounded-xl text-left">
+            <p className="text-[11px] text-[#D4AF37] font-bold">✔️ DAILY CHECK-IN + 14-DAY SAFETY</p>
+            <p className="text-[12px] text-gray-300 mt-1">Check in daily. If you miss 14 days, we call your witnesses to confirm you are okay. Your Wasiyyah stays protected.</p>
           </div>
         </div>
       </section>
@@ -67,8 +89,8 @@ export default function WelcomePage() {
           <div className="mt-12 grid md:grid-cols-3 gap-6">
             {[
               { n: "01", t: "Record", d: "Add who you owe or who owes you in 10 seconds with witness & due date." },
-              { n: "02", t: "Remind", d: "Get nudges before due date. Never miss a Haqq. Auto dua for ease." },
-              { n: "03", t: "Clear", d: "Mark as paid, keep proof, export PDF for legacy & inheritance." },
+              { n: "02", t: "Remind", d: "Get nudges before due date. Never miss a Haqq. Daily check-in keeps you alive in the system." },
+              { n: "03", t: "Clear", d: "Mark as paid, keep proof, export PDF for legacy & inheritance. Wasiyyah locked until verified." },
             ].map((s, i) => (
               <div key={i} className="bg-[#112240] border border-[#D4AF37]/15 rounded-[20px] p-6 hover:border-[#D4AF37]/30 transition-colors">
                 <div className="w-10 h-10 rounded-full bg-[#0A1931] text-[#D4AF37] border border-[#D4AF37]/30 flex items-center justify-center font-bold text-sm">{s.n}</div>
@@ -81,7 +103,7 @@ export default function WelcomePage() {
       </section>
 
       <footer id="support" className="relative z-10 bg-[#0A1931] border-t border-[#D4AF37]/10 text-center py-8 text-xs text-[#E8EDF5]/50">
-        Built for Amanah • Quran 2:282 • <a href="/vault" className="text-[#D4AF37] font-bold underline">Open Vault</a>
+        Built for Amanah • Quran 2:282 • <button onClick={handleVault} className="text-[#D4AF37] font-bold underline">Open Vault</button>
       </footer>
     </div>
   )
