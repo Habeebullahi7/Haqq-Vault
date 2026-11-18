@@ -17,14 +17,12 @@ export default function LoginPage() {
   async function handleAuth() {
     setErrorMsg("");
     setSuccessMsg("");
-
-    // 1. VALIDATION - No empty submit
     if (!email.trim() || !password.trim()) {
-      setErrorMsg("Abeg fill email and password.");
+      setErrorMsg("Please fill in your email and password.");
       return;
     }
     if (!email.includes("@")) {
-      setErrorMsg("Abeg enter correct email.");
+      setErrorMsg("Please enter a valid email address.");
       return;
     }
     if (password.length < 6) {
@@ -32,41 +30,29 @@ export default function LoginPage() {
       return;
     }
     if (isSignup && !fullName.trim()) {
-      setErrorMsg("Abeg enter your full name.");
+      setErrorMsg("Please enter your full name.");
       return;
     }
-
     setLoading(true);
-
     try {
       if (isSignup) {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim().toLowerCase(),
           password,
-          options: {
-            data: { full_name: fullName.trim() },
-          },
+          options: { data: { full_name: fullName.trim() } },
         });
         if (error) throw error;
-
-        // If user created, save profile - but no go fail silently
         if (data.user) {
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .upsert([{ id: data.user.id, full_name: fullName.trim(), email: email.trim().toLowerCase() }]);
-
-          // If profile insert fail because of RLS, no block user - log am
-          if (profileError) console.log("Profile save issue:", profileError.message);
+          await supabase.from("profiles").upsert([
+            { id: data.user.id, full_name: fullName.trim(), email: email.trim().toLowerCase() },
+          ]);
         }
-
-        // If email confirmation ON, Supabase no go login immediately
         if (data.user && !data.session) {
-          setSuccessMsg("Account created! Check your email to confirm, then login.");
+          setSuccessMsg("Account created. Please check your email to confirm, then log in.");
           setIsSignup(false);
           setLoading(false);
           return;
         }
-
         router.push("/onboarding-witness");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -74,19 +60,18 @@ export default function LoginPage() {
           password,
         });
         if (error) throw error;
-        router.push("/");
+        router.push("/home");
       }
     } catch (err: any) {
-      // Friendly error messages
       if (err.message?.includes("Invalid login credentials")) {
-        setErrorMsg("Wrong email or password. Try again or create account.");
+        setErrorMsg("Incorrect email or password. Please try again.");
       } else if (err.message?.includes("User already registered")) {
-        setErrorMsg("This email don already register. Abeg login.");
+        setErrorMsg("This email is already registered. Please log in.");
         setIsSignup(false);
       } else if (err.message?.includes("Email not confirmed")) {
-        setErrorMsg("Abeg confirm your email first. Check inbox / spam.");
+        setErrorMsg("Please confirm your email first. Check your inbox or spam.");
       } else {
-        setErrorMsg(err.message || "Something go wrong. Try again.");
+        setErrorMsg(err.message || "Something went wrong. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -104,8 +89,10 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (error) setErrorMsg(error.message);
-    else setSuccessMsg("Reset link don go your email. Check inbox / spam.");
+    else setSuccessMsg("A reset link has been sent to your email. Check your inbox or spam.");
   }
+
+  const inputClass = "w-full p-3.5 bg-gray-50 rounded-xl border outline-none text-[#0f172a] placeholder:text-gray-400 focus:border-[#0f172a] focus:bg-white transition";
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white flex items-center justify-center px-5 py-8">
@@ -115,80 +102,24 @@ export default function LoginPage() {
           <h1 className="font-extrabold text-[28px] mt-2 tracking-tight">HAQQ VAULT</h1>
           <p className="text-sm text-gray-400">Clear your Haqq before you meet Allah</p>
         </div>
-
         <div className="bg-white text-[#0f172a] rounded-[24px] p-6 space-y-4 shadow-2xl">
           <h2 className="font-bold text-lg">{isSignup ? "Create Account" : "Welcome Back"}</h2>
-
-          {/* ERROR / SUCCESS */}
-          {errorMsg && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-[13px] font-medium p-3 rounded-xl">
-              {errorMsg}
-            </div>
-          )}
-          {successMsg && (
-            <div className="bg-green-50 border border-green-200 text-green-700 text-[13px] font-medium p-3 rounded-xl">
-              {successMsg}
-            </div>
-          )}
-
+          {errorMsg && <div className="bg-red-50 border border-red-200 text-red-700 text-[13px] font-medium p-3 rounded-xl">{errorMsg}</div>}
+          {successMsg && <div className="bg-green-50 border border-green-200 text-green-700 text-[13px] font-medium p-3 rounded-xl">{successMsg}</div>}
           {isSignup && (
-            <input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Full Name e.g. Liasu Habeeb"
-              className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none focus:border-[#0f172a] focus:bg-white transition"
-            />
+            <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full Name e.g. Liasu Habeeb" className={inputClass} />
           )}
-
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            type="email"
-            autoComplete="email"
-            className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none focus:border-[#0f172a] focus:bg-white transition"
-          />
-
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Address" type="email" autoComplete="email" className={inputClass} />
           <div className="relative">
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password (min 6 characters)"
-              type={showPassword ? "text" : "password"}
-              autoComplete={isSignup ? "new-password" : "current-password"}
-              onKeyDown={(e) => e.key === "Enter" && handleAuth()}
-              className="w-full p-3.5 pr-16 bg-gray-50 rounded-xl border outline-none focus:border-[#0f172a] focus:bg-white transition"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-500"
-            >
-              {showPassword ? "HIDE" : "SHOW"}
-            </button>
+            <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (min 6 characters)" type={showPassword ? "text" : "password"} autoComplete={isSignup ? "new-password" : "current-password"} onKeyDown={(e) => e.key === "Enter" && handleAuth()} className={`${inputClass} pr-16`} />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-500">{showPassword ? "HIDE" : "SHOW"}</button>
           </div>
-
-          {!isSignup && (
-            <button onClick={handleForgotPassword} className="text-[13px] font-bold text-[#0f172a]/70 underline text-left">
-              Forgot Password?
-            </button>
-          )}
-
-          <button
-            onClick={handleAuth}
-            disabled={loading}
-            className="w-full bg-[#0f172a] text-white py-3.5 rounded-full font-bold disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition"
-          >
-            {loading ? "Loading..." : isSignup ? "Create Account →" : "Login →"}
-          </button>
-
-          <button onClick={() => { setIsSignup(!isSignup); setErrorMsg(""); setSuccessMsg(""); }} className="w-full text-sm font-bold underline">
-            {isSignup ? "Already have account? Login" : "No account? Create one"}
-          </button>
+          {!isSignup && <button onClick={handleForgotPassword} className="text-[13px] font-bold text-[#0f172a]/70 underline text-left">Forgot Password?</button>}
+          <button onClick={handleAuth} disabled={loading} className="w-full bg-[#0f172a] text-white py-3.5 rounded-full font-bold disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition">{loading ? "Loading..." : isSignup ? "Create Account →" : "Login →"}</button>
+          <button onClick={() => { setIsSignup(!isSignup); setErrorMsg(""); setSuccessMsg(""); }} className="w-full text-sm font-bold underline">{isSignup ? "Already have an account? Login" : "No account? Create one"}</button>
         </div>
-
-        <p className="text-[11px] text-center text-gray-500 mt-4">Your Haqq stays private. Only you can see am.</p>
+        <p className="text-[11px] text-center text-gray-500 mt-4">Your Haqq stays private. Only you can see it.</p>
       </div>
     </div>
   );
-  }
+            }
