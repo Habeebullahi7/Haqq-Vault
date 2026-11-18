@@ -7,21 +7,19 @@ import AuthGuard from "@/components/AuthGuard";
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   
-  // Pages that have their OWN nav, or no nav at all
-  const isAuthPage = pathname === "/login" || pathname.startsWith("/reset-password") || pathname.startsWith("/auth/");
-  const isWelcomePage = pathname === "/";
+  // Pages with NO TopBar / BottomNav - they have their own design
+  const isNoNavPage =
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname.startsWith("/reset-password") ||
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/onboarding");
 
-  // 1. Login page: no TopBar, no BottomNav
-  if (isAuthPage) {
+  if (isNoNavPage) {
     return <AuthGuard>{children}</AuthGuard>;
   }
 
-  // 2. Welcome page: it already has its own <nav> inside page.tsx, so don't add another one
-  if (isWelcomePage) {
-    return <AuthGuard>{children}</AuthGuard>;
-  }
-
-  // 3. All other pages (Home, Vault, etc): show TopBar + BottomNav
+  // Inside app: Home, Vault, etc - show TopBar + BottomNav
   return (
     <AuthGuard>
       <TopAppBar />
