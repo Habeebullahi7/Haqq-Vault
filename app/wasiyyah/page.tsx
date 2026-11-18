@@ -108,7 +108,7 @@ export default function WasiyyahPage() {
   const [loans, setLoans] = useState([{ from: '', amt: '' }])
   const [owing, setOwing] = useState([{ person: '', amt: '' }])
   const [kaffarahAmt, setKaffarahAmt] = useState('')
-  const [funeralAmt, setFuneralAmt] = useState('500000')
+  const [funeralAmt, setFuneralAmt] = useState('')
 
   // STEP 3
   const [myGender, setMyGender] = useState<'male' | 'female'>('male')
