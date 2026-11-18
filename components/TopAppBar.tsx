@@ -1,12 +1,25 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { Bell, Search, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Bell, Search, X, LogOut } from 'lucide-react'
+import { supabase } from "@/lib/supabase"
 
 export default function TopAppBar() {
   const [showSearch, setShowSearch] = useState(false)
   const [showNotif, setShowNotif] = useState(false)
   const [query, setQuery] = useState('')
+  const [loggingOut, setLoggingOut] = useState(false)
+  const router = useRouter()
+
+  async function handleLogout() {
+    if (loggingOut) return
+    setLoggingOut(true)
+    await supabase.auth.signOut()
+    setShowNotif(false)
+    setShowSearch(false)
+    router.replace("/login")
+  }
 
   return (
     <>
@@ -25,6 +38,9 @@ export default function TopAppBar() {
               <Bell size={18} />
               <span className="absolute top-2 right-2.5 w-2 h-2 bg-[#D4AF37] rounded-full" />
             </button>
+            <button onClick={handleLogout} disabled={loggingOut} aria-label="Logout" className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center disabled:opacity-50">
+              <LogOut size={18} />
+            </button>
             <Link href="/vault" className="ml-1 bg-[#D4AF37] text-[#0A1931] text-xs font-bold px-4 py-2 rounded-full">Open Vault</Link>
           </div>
         </div>
@@ -42,6 +58,9 @@ export default function TopAppBar() {
               <div className="flex gap-2"><span>🤲</span><div><p className="font-medium">Wasiyyah reminder: Write your Will</p><p className="text-xs text-black/50">2 days ago</p></div></div>
             </div>
             <Link href="/vault" onClick={() => setShowNotif(false)} className="block mt-4 bg-black text-white text-center py-3 rounded-xl text-sm font-bold">Open Vault</Link>
+            <button onClick={handleLogout} disabled={loggingOut} className="block w-full mt-2 bg-red-50 border border-red-100 text-red-600 text-center py-3 rounded-xl text-sm font-bold">
+              {loggingOut ? "Logging out..." : "Logout"}
+            </button>
           </div>
         )}
       </header>
@@ -65,4 +84,4 @@ export default function TopAppBar() {
       )}
     </>
   )
-      }
+}
