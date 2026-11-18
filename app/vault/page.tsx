@@ -1,7 +1,7 @@
+// app/vault/page.tsx - Wasiyyah card REMOVED, now only Debts / Haqq
 "use client";
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
-import BottomNav from "../../components/BottomNav";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,13 +24,9 @@ export default function VaultPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [newDebt, setNewDebt] = useState({ person: '', amount: '', type: 'i_owe', due_date: '', note: '', customNote: '' });
   const [hadith, setHadith] = useState(hadiths[0]);
-  const [wasiyyah, setWasiyyah] = useState<any>(null);
-  const [wasiyyahStatus, setWasiyyahStatus] = useState('DRAFT');
-  const [versions, setVersions] = useState<any[]>([]);
 
   useEffect(() => {
     fetchDebts();
-    fetchWasiyyah();
     const today = new Date().toDateString();
     const savedDay = localStorage.getItem("hadithDay");
     const savedIndex = localStorage.getItem("hadithIndex");
@@ -44,30 +40,6 @@ export default function VaultPage() {
     }
   }, []);
 
-  async function fetchWasiyyah() {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase.from('wasiyyahs').select('*').eq('user_id', user.id).single();
-        if (data) {
-          setWasiyyah(data);
-          setWasiyyahStatus(data.vault_status || 'DRAFT');
-          const { data: vers } = await supabase.from('wasiyyah_versions').select('*').eq('wasiyyah_id', data.id).order('created_at', { ascending: false });
-          if (vers) setVersions(vers);
-          return;
-        }
-      }
-    } catch {}
-    const local = localStorage.getItem("haqq-wasiyyah");
-    if (local) {
-      const parsed = JSON.parse(local);
-      setWasiyyah(parsed);
-      setWasiyyahStatus(localStorage.getItem("haqq-wasiyyah-status") || 'ACTIVE_LOCKED');
-    }
-    const localVers = localStorage.getItem("haqq-wasiyyah-versions");
-    if (localVers) setVersions(JSON.parse(localVers));
-  }
-
   async function fetchDebts() {
     const { data } = await supabase.from('debts').select('*').order('created_at', { ascending: false });
     if (data) setDebts(data as any);
@@ -76,19 +48,9 @@ export default function VaultPage() {
   async function addDebt() {
     if (!newDebt.person || !newDebt.note) { alert("Fill person and type of Haqq"); return; }
     if (newDebt.note === "Other - Custom" && !newDebt.customNote) { alert("Please type your custom Haqq in the box"); return; }
-    const finalNote = newDebt.note === "Other - Custom" 
-      ? newDebt.customNote 
-      : newDebt.note + (newDebt.customNote ? ` - ${newDebt.customNote}` : '');
+    const finalNote = newDebt.note === "Other - Custom" ? newDebt.customNote : newDebt.note + (newDebt.customNote ? ` - ${newDebt.customNote}` : '');
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from('debts').insert([{ 
-      person: newDebt.person,
-      amount: Number(newDebt.amount) || 0, 
-      type: newDebt.type,
-      due_date: newDebt.due_date || null,
-      note: finalNote,
-      status: 'pending',
-      user_id: user?.id || null
-    }]);
+    await supabase.from('debts').insert([{ person: newDebt.person, amount: Number(newDebt.amount) || 0, type: newDebt.type, due_date: newDebt.due_date || null, note: finalNote, status: 'pending', user_id: user?.id || null }]);
     setShowAdd(false);
     setNewDebt({ person: '', amount: '', type: 'i_owe', due_date: '', note: '', customNote: '' });
     fetchDebts();
@@ -104,60 +66,23 @@ export default function VaultPage() {
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white pb-[150px]">
-      {/* TOP HEADER */}
       <div className="px-6 py-5 flex justify-between items-center border-b border-white/10 sticky top-0 bg-[#0f172a]/95 backdrop-blur z-20">
         <h1 className="font-bold text-lg tracking-widest">HAQQ VAULT <span className="text-[#D4AF37]">🔒</span></h1>
         <a href="/wasiyyah" className="text-[11px] bg-[#D4AF37] text-[#0f172a] px-3 py-1.5 rounded-full font-bold no-underline">Wasiyyah</a>
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
-        {/* WASIYYAH VAULT CARD */}
-        <div className="bg-white text-[#0f172a] rounded-[20px] p-5 shadow-xl border-2 border-[#D4AF37]/40">
-          <div className="flex justify-between items-start gap-3">
+        {/* LINK TO WASIYYAH - Replaces big card. Card now lives on /wasiyyah */}
+        <a href="/wasiyyah" className="block bg-white text-[#0f172a] rounded-[20px] p-5 shadow-xl border-2 border-[#D4AF37]/40 no-underline">
+          <div className="flex justify-between items-center">
             <div>
               <p className="text-[10px] tracking-widest text-[#D4AF37] font-bold">📜 MY WASIYYAH - ISLAMIC WILL</p>
-              <h2 className="font-extrabold text-[18px] mt-1">{wasiyyah ? (wasiyyah.full_name || 'My Wasiyyah') : 'No Wasiyyah Saved Yet'}</h2>
+              <p className="font-extrabold text-[16px] mt-1">View My Wasiyyah →</p>
+              <p className="text-sm text-gray-600 mt-1">Your Will is locked and safe on the Wasiyyah page.</p>
             </div>
-            {wasiyyah && (
-              <span className={`text-[10px] px-2 py-1 rounded-full font-bold whitespace-nowrap shrink-0 ${wasiyyahStatus === 'ACTIVE_LOCKED' ? 'bg-green-100 text-green-700' : wasiyyahStatus === 'RELEASED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                {wasiyyahStatus === 'ACTIVE_LOCKED' ? '🔒 LOCKED & SAFE' : wasiyyahStatus === 'EDITING' ? '🔓 EDITING' : wasiyyahStatus === 'RELEASED' ? '⚠️ RELEASED' : '📝 DRAFT'}
-              </span>
-            )}
+            <span className="text-2xl">🔒</span>
           </div>
-
-          {!wasiyyah ? (
-            <>
-              <p className="text-sm text-gray-600 mt-2">Your Wasiyyah is not in the Vault yet. Create it now - it will be locked here until after death verification.</p>
-              <a href="/wasiyyah" className="block text-center mt-4 bg-[#0f172a] text-white py-3 rounded-full font-bold text-sm no-underline">Create My Wasiyyah →</a>
-            </>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-3 mt-4 text-sm">
-                <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">NET ESTATE</p><p className="font-extrabold">₦{(wasiyyah.net_estate ?? wasiyyah.net ?? 0).toLocaleString()}</p></div>
-                <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">WASIYYAH (1/3)</p><p className="font-extrabold">₦{(Number(String(wasiyyah.wasiyyah_amount || wasiyyah.wasiyyahAmt || '0').replace(/,/g, '')) || 0).toLocaleString()}</p></div>
-                <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">EXECUTOR</p><p className="font-bold truncate">{wasiyyah.executor_name || wasiyyah.executorName || '-'}</p></div>
-                <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">LAWYER</p><p className="font-bold truncate">{wasiyyah.lawyer_choice === 'haqq' ? 'HAQQ Lawyer' : wasiyyah.lawyer_name || wasiyyah.lawyerName || 'No Lawyer Yet'}</p></div>
-              </div>
-              <p className="text-[11px] text-gray-500 mt-3 bg-yellow-50 p-3 rounded-xl leading-relaxed">
-                🔒 Locked: Only you can unlock to edit (PIN + OTP). Executor / Lawyer can only access after death verification.
-                {versions.length > 0 && <><br/>Version History: {versions.length} version(s) saved.</>}
-              </p>
-              <div className="flex gap-2 mt-3">
-                <a href="/wasiyyah" className="flex-1 text-center bg-[#0f172a] text-white py-3 rounded-full font-bold text-sm no-underline">Unlock To Edit</a>
-                <a href="/report-death" className="flex-1 text-center bg-red-600 text-white py-3 rounded-full font-bold text-sm no-underline">Report Death</a>
-              </div>
-              <a href="/lawyer" className="block text-center mt-2 bg-yellow-400 text-black py-3 rounded-full font-bold text-sm no-underline">⚖️ Go To Lawyer Page</a>
-              {versions.length > 0 && (
-                <div className="mt-3 pt-3 border-t">
-                  <p className="text-[11px] font-bold">VERSION HISTORY</p>
-                  {versions.slice(0, 3).map((v: any, i: number) => (
-                    <p key={i} className="text-[11px] text-gray-500">Version {versions.length - i} - {new Date(v.created_at || v.date).toLocaleDateString('en-NG')} - ₦{(v.net_estate ?? v.net ?? 0).toLocaleString()}</p>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        </a>
 
         <div className="bg-gradient-to-r from-[#D4AF37]/20 to-transparent border border-[#D4AF37]/30 rounded-2xl p-4">
           <p className="text-[11px] tracking-widest text-[#D4AF37]">QURAN 2:282</p>
@@ -208,7 +133,6 @@ export default function VaultPage() {
         </div>
       </div>
 
-      {/* FLOATING + BUTTON - Sits ABOVE the pill nav, no go cover again */}
       <button onClick={() => setShowAdd(true)} className="fixed bottom-[115px] right-4 w-12 h-12 bg-[#D4AF37] text-[#0f172a] rounded-full shadow-xl flex items-center justify-center text-2xl font-bold z-30 lg:hidden">+</button>
 
       {showAdd && (
@@ -219,12 +143,12 @@ export default function VaultPage() {
             <p className="text-xs text-gray-500 mt-1">Tap to remember forgotten Haqq, or type your own</p>
             <div className="mt-5 space-y-4">
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={()=>setNewDebt({...newDebt, type: 'i_owe'})} className={`p-3 rounded-xl border text-sm font-bold ${newDebt.type==='i_owe' ? 'bg-[#0f172a] text-white' : 'bg-gray-50'}`}>I Owe / I Wronged</button>
-                <button onClick={()=>setNewDebt({...newDebt, type: 'they_owe'})} className={`p-3 rounded-xl border text-sm font-bold ${newDebt.type==='they_owe' ? 'bg-[#D4AF37] text-[#0f172a]' : 'bg-gray-50'}`}>They Owe Me</button>
+                <button onClick={()=>setNewDebt({...newDebt, type: 'i_owe'})} className={`p-3 rounded-xl border text-sm font-bold ${newDebt.type==='i_owe' ? 'bg-[#0f172a] text-white' : 'bg-gray-50 text-[#0f172a]'}`}>I Owe / I Wronged</button>
+                <button onClick={()=>setNewDebt({...newDebt, type: 'they_owe'})} className={`p-3 rounded-xl border text-sm font-bold ${newDebt.type==='they_owe' ? 'bg-[#D4AF37] text-[#0f172a]' : 'bg-gray-50 text-[#0f172a]'}`}>They Owe Me</button>
               </div>
               <div>
                 <label className="text-[11px] font-bold tracking-widest opacity-60">HOW DID I WRONG SOMEONE? (This will jog your memory)</label>
-                <select value={newDebt.note} onChange={e=>setNewDebt({...newDebt, note: e.target.value})} className="w-full mt-1 p-4 bg-gray-50 rounded-xl border text-sm font-bold outline-none">
+                <select value={newDebt.note} onChange={e=>setNewDebt({...newDebt, note: e.target.value})} className="w-full mt-1 p-4 bg-gray-50 rounded-xl border text-sm font-bold outline-none text-[#0f172a]">
                   <option value="">Select to remember...</option>
                   <optgroup label="💰 MONEY / BUSINESS">
                     <option value="I Owe - Borrowed Money">💰 Borrowed Money & Never Paid</option>
@@ -268,32 +192,20 @@ export default function VaultPage() {
                 <label className="text-[11px] font-bold tracking-widest opacity-70">
                   {newDebt.note === "Other - Custom" ? "✍️ TYPE YOUR OWN HAQQ HERE (Required)" : "✍️ Describe Your Case More (Optional but Powerful)"}
                 </label>
-                <textarea 
-                  value={newDebt.customNote} 
-                  onChange={e=>setNewDebt({...newDebt, customNote: e.target.value})} 
-                  placeholder={
-                    newDebt.note === "Other - Custom" 
-                    ? "Example: I spoiled my friend's relationship, or I stole pen in office 2019, or I cheated during exam and copied someone's work..."
-                    : "Add more details: Example - How it happened, where, when? This helps you remember on Qiyamah and fix it properly."
-                  }
-                  className="w-full mt-2 p-3 bg-white rounded-xl border outline-none text-sm min-h-[90px] focus:border-[#0f172a]"
-                  rows={3}
-                />
+                <textarea value={newDebt.customNote} onChange={e=>setNewDebt({...newDebt, customNote: e.target.value})} placeholder={newDebt.note === "Other - Custom" ? "Example: I spoiled my friend's relationship, or I stole pen in office 2019..." : "Add more details: Example - How it happened, where, when?"} className="w-full mt-2 p-3 bg-white rounded-xl border outline-none text-sm min-h-[90px] focus:border-[#0f172a] text-[#0f172a] placeholder:text-gray-400" rows={3} />
                 <p className="text-[10px] text-gray-500 mt-1">Allah loves honest confession. Write it for His sake — it stays private in your vault.</p>
               </div>
-              <input value={newDebt.person} onChange={e=>setNewDebt({...newDebt, person: e.target.value})} placeholder="Person name (e.g. Musa, Classmate 2015, Neighbour)" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none" />
-              <input value={newDebt.amount} onChange={e=>setNewDebt({...newDebt, amount: e.target.value})} type="number" placeholder="Amount ₦ (put 0 if not money - e.g. Ghibah)" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none" />
-              <input value={newDebt.due_date} onChange={e=>setNewDebt({...newDebt, due_date: e.target.value})} type="date" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none" />
+              <input value={newDebt.person} onChange={e=>setNewDebt({...newDebt, person: e.target.value})} placeholder="Person name (e.g. Musa, Classmate 2015, Neighbour)" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none text-[#0f172a] placeholder:text-gray-400" />
+              <input value={newDebt.amount} onChange={e=>setNewDebt({...newDebt, amount: e.target.value})} type="number" placeholder="Amount ₦ (put 0 if not money - e.g. Ghibah)" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none text-[#0f172a] placeholder:text-gray-400" />
+              <input value={newDebt.due_date} onChange={e=>setNewDebt({...newDebt, due_date: e.target.value})} type="date" className="w-full p-3.5 bg-gray-50 rounded-xl border outline-none text-[#0f172a]" />
               <div className="flex gap-3 pt-2 pb-2">
-                <button onClick={()=>setShowAdd(false)} className="flex-1 p-3.5 bg-gray-100 rounded-xl font-bold">Cancel</button>
+                <button onClick={()=>setShowAdd(false)} className="flex-1 p-3.5 bg-gray-100 rounded-xl font-bold text-[#0f172a]">Cancel</button>
                 <button onClick={addDebt} className="flex-1 p-3.5 bg-[#0f172a] text-white rounded-xl font-bold">Save Haqq</button>
               </div>
             </div>
           </div>
         </div>
       )}
-
-      <BottomNav />
     </div>
   )
-                                                                                         }
+                      }
