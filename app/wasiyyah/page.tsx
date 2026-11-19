@@ -417,6 +417,8 @@ export default function WasiyyahPage() {
           <p className="text-[11px] text-gray-400 mt-3">Default PIN is 1234 if you never set one.</p>
         </div>
       </div>
+        )
+  }
   return (
     <div className="min-h-screen bg-[#0A1931] text-white pb-[140px]">
       <div className="max-w-[520px] mx-auto px-4 pt-5">
