@@ -1,9 +1,10 @@
 // app/wasiyyah/page.tsx - PART 1 of 3
 'use client'
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { supabase } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
 
 const IMAM_WHATSAPP = '2348161866717'
-const HAQQ_ADMIN_WHATSAPP = '2347041935986'
 
 const WORD_NUMBERS: any = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100, thousand: 1000, million: 1000000, billion: 1000000000 }
 function parseWordNumber(text: string): number {
@@ -56,6 +57,7 @@ const AddBtn = ({ onClick, label }: any) => (<button onClick={onClick} className
 const Hint = () => (<p className="text-[11px] text-gray-500 mt-1">You can type 10,000,000 or 10m or 10 million or Ten million - all work.</p>)
 
 export default function WasiyyahPage() {
+  const router = useRouter()
   const [step, setStep] = useState(1)
   const [isLocked, setIsLocked] = useState(false)
   const [pinInput, setPinInput] = useState('')
@@ -69,19 +71,7 @@ export default function WasiyyahPage() {
   const [otpSent, setOtpSent] = useState(false)
   const [generatedOtp, setGeneratedOtp] = useState('')
   const [editReason, setEditReason] = useState('')
-
-  useEffect(() => {
-    const p = localStorage.getItem('haqq-wasiyyah-pin')
-    if (p) { setSavedPin(p); setIsLocked(true) }
-    const status = localStorage.getItem('haqq-wasiyyah-status') as any
-    if (status) setVaultStatus(status)
-    const v = localStorage.getItem('haqq-wasiyyah-versions')
-    if (v) setVersions(JSON.parse(v))
-    const last = localStorage.getItem('haqq-wasiyyah-last-saved')
-    if (last) { setLastSaved(last); const d = new Date(last); d.setMonth(d.getMonth() + 6); setNextReview(d.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })) }
-  }, [])
-
-  const unlockVaultEntry = () => { if (pinInput === savedPin) setIsLocked(false); else alert('Incorrect PIN.') }
+  const [loadingSave, setLoadingSave] = useState(false)
 
   // STEP 1
   const [cashHome, setCashHome] = useState('')
@@ -108,7 +98,7 @@ export default function WasiyyahPage() {
   const [loans, setLoans] = useState([{ from: '', amt: '' }])
   const [owing, setOwing] = useState([{ person: '', amt: '' }])
   const [kaffarahAmt, setKaffarahAmt] = useState('')
-  const [funeralAmt, setFuneralAmt] = useState('')
+  const [funeralAmt, setFuneralAmt] = useState('500000')
 
   // STEP 3
   const [myGender, setMyGender] = useState<'male' | 'female'>('male')
@@ -200,6 +190,62 @@ export default function WasiyyahPage() {
   const faraidPool = Math.max(0, net - num(wasiyyahAmt))
   const fmt = formatMoney
 
+  // LOAD FROM SUPABASE - replaces localStorage
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push("/login"); return }
+      const p = localStorage.getItem('haqq-wasiyyah-pin')
+      if (p) { setSavedPin(p); setIsLocked(true) }
+      const { data } = await supabase.from('wasiyyahs').select('*').eq('user_id', user.id).single()
+      if (!data) return
+      const d = (data as any).data || {}
+      const setIf = (v: any, fn: any) => { if (v !== undefined && v !== null && v !== '') fn(v) }
+      setIf(d.fullName, setFullName); setIf(d.cashHome, setCashHome)
+      if (d.banks?.length) setBanks(d.banks); if (d.properties?.length) setProperties(d.properties)
+      if (d.cars?.length) setCars(d.cars); if (d.businesses?.length) setBusinesses(d.businesses)
+      if (d.others?.length) setOthers(d.others); if (d.loans?.length) setLoans(d.loans)
+      if (d.owing?.length) setOwing(d.owing)
+      setIf(d.kaffarahAmt, setKaffarahAmt); setIf(d.funeralAmt, setFuneralAmt)
+      setIf(d.myGender, setMyGender); setIf(d.isMarried, setIsMarried); setIf(d.wivesCount, setWivesCount)
+      setIf(d.sons, setSons); setIf(d.daughters, setDaughters)
+      setIf(d.fatherAlive, setFatherAlive); setIf(d.motherAlive, setMotherAlive)
+      setIf(d.pGrandFather, setPGrandFather); setIf(d.pGrandMother, setPGrandMother); setIf(d.mGrandMother, setMGrandMother)
+      setIf(d.fullBrothers, setFullBrothers); setIf(d.fullSisters, setFullSisters)
+      setIf(d.paternalBrothers, setPaternalBrothers); setIf(d.paternalSisters, setPaternalSisters)
+      setIf(d.maternalBrothers, setMaternalBrothers); setIf(d.maternalSisters, setMaternalSisters)
+      setIf(d.paternalUncles, setPaternalUncles)
+      if (d.heirs?.length) setHeirs(d.heirs)
+      setIf(d.wasiyyahTo, setWasiyyahTo); setIf(d.wasiyyahAmt, setWasiyyahAmt)
+      setIf(d.message, setMessage); setIf(d.messageSpouse, setMessageSpouse); setIf(d.messageChildren, setMessageChildren); setIf(d.messageFamily, setMessageFamily)
+      if (d.specificGifts?.length) setSpecificGifts(d.specificGifts)
+      setIf(d.guardianName, setGuardianName); setIf(d.guardianPhone, setGuardianPhone); setIf(d.guardianRelation, setGuardianRelation)
+      setIf(d.backupGuardianName, setBackupGuardianName); setIf(d.backupGuardianPhone, setBackupGuardianPhone)
+      setIf(d.hasMinors, setHasMinors); setIf(d.burialLocation, setBurialLocation); setIf(d.washBy, setWashBy)
+      setIf(d.janazahLeader, setJanazahLeader); setIf(d.funeralNote, setFuneralNote)
+      setIf(d.dateOfBirth, setDateOfBirth); setIf(d.location, setLocation)
+      setIf(d.witness1Name, setWitness1Name); setIf(d.witness1Phone, setWitness1Phone)
+      setIf(d.witness2Name, setWitness2Name); setIf(d.witness2Phone, setWitness2Phone)
+      setIf(d.executorName, setExecutorName); setIf(d.executorPhone, setExecutorPhone)
+      setIf(d.backupExecutorName, setBackupExecutorName); setIf(d.backupExecutorPhone, setBackupExecutorPhone)
+      setIf(d.lawyerChoice, setLawyerChoice); setIf(d.lawyerName, setLawyerName); setIf(d.lawyerFirm, setLawyerFirm)
+      setIf(d.lawyerPhone, setLawyerPhone); setIf(d.lawyerEmail, setLawyerEmail)
+      setIf(d.haqqLawyerType, setHaqqLawyerType); setIf(d.haqqLawyerNote, setHaqqLawyerNote)
+      if (d.lawyerPaid !== undefined) setLawyerPaid(d.lawyerPaid)
+      if (d.isPremium !== undefined) setIsPremium(d.isPremium)
+      if (d.noExpensiveCeremony !== undefined) setNoExpensiveCeremony(d.noExpensiveCeremony)
+      setVaultStatus(((data as any).status as any) || 'DRAFT')
+      if (d.versions?.length) setVersions(d.versions)
+      if ((data as any).updated_at) {
+        setLastSaved((data as any).updated_at)
+        const dd = new Date((data as any).updated_at); dd.setMonth(dd.getMonth() + 6)
+        setNextReview(dd.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }))
+      }
+    }
+    load()
+  }, [router])
+
+  const unlockVaultEntry = () => { if (pinInput === savedPin) setIsLocked(false); else alert('Incorrect PIN.') }
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
@@ -213,14 +259,12 @@ export default function WasiyyahPage() {
   }
   const stopRecording = () => { if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); setIsRecording(false) } }
   const handleVideoUpload = (e: any) => { const f = e.target.files[0]; if (f) { setVideoFile(f); setVideoUrl(URL.createObjectURL(f)) } }
-
   const sendToImamWhatsApp = () => {
     if (!imamQuestion.trim()) return alert('Please type your question first.')
     const text = `Assalamu Alaikum Imam,\n\nI have a question about my Wasiyyah on HAQQ App:\n\nQuestion: ${imamQuestion}\n\nMy details:\nName: ${fullName || 'Not provided'}\nGender: ${myGender}\nMarried: ${isMarried}\nNet Estate: ${fmt(net)}\nChildren: ${sons} sons, ${daughters} daughters\n\nPlease reply me. Jazakum Allahu Khairan.`
     window.open(`https://wa.me/${IMAM_WHATSAPP}?text=${encodeURIComponent(text)}`, '_blank')
     setImamSent(true)
   }
-
   const sendOtp = () => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
     setGeneratedOtp(otp); setOtpSent(true)
@@ -233,18 +277,7 @@ export default function WasiyyahPage() {
     if (!editReason.trim()) return alert('Please select why you want to edit.')
     setVaultStatus('EDITING'); setIsLocked(false); setShowUnlockModal(false); setOtpSent(false); setUnlockOtp('')
     alert(`Wasiyyah Unlocked for editing. Reason: ${editReason}. Remember to Save & Lock Again when you finish.`)
-  }
-  const saveAndLockAgain = () => {
-    const now = new Date().toISOString()
-    const data = { fullName, myGender, totalAssets, totalDebts, net, wasiyyahAmt, wasiyyahTo, message, messageSpouse, messageChildren, messageFamily, specificGifts, guardianName, burialLocation, heirs, witness1Name, witness2Name, executorName, location, savedAt: now, editReason, vaultStatus: 'ACTIVE_LOCKED', version: versions.length + 1, videoVerified: !!videoFile, faraid, lawyerChoice, lawyerName, lawyerPaid }
-    localStorage.setItem('haqq-wasiyyah', JSON.stringify(data))
-    localStorage.setItem('haqq-wasiyyah-status', 'ACTIVE_LOCKED')
-    localStorage.setItem('haqq-wasiyyah-last-saved', now)
-    const newVersions = [{ date: now, net, wasiyyahAmt, fullName, editReason }, ...versions].slice(0, 10)
-    setVersions(newVersions); localStorage.setItem('haqq-wasiyyah-versions', JSON.stringify(newVersions))
-    setVaultStatus('ACTIVE_LOCKED'); setLastSaved(now)
-    alert('Your Wasiyyah has been updated and LOCKED again. New version saved.')
-  }
+    
   const faraid = useMemo(() => {
     const out: any[] = []
     if (faraidPool <= 0) return out
@@ -293,20 +326,56 @@ export default function WasiyyahPage() {
     return out
   }, [faraidPool, myGender, isMarried, wivesCount, sons, daughters, fatherAlive, motherAlive, pGrandFather, pGrandMother, mGrandMother, fullBrothers, fullSisters, paternalBrothers, paternalSisters, maternalBrothers, maternalSisters, paternalUncles])
 
-  const saveAll = () => {
+  const buildWasiyyahData = (status: string, version: number, vers: any[]) => ({
+    fullName, myGender, cashHome, banks, properties, cars, businesses, others,
+    loans, owing, kaffarahAmt, funeralAmt,
+    isMarried, wivesCount, sons, daughters, fatherAlive, motherAlive,
+    pGrandFather, pGrandMother, mGrandMother,
+    fullBrothers, fullSisters, paternalBrothers, paternalSisters,
+    maternalBrothers, maternalSisters, paternalUncles, heirs,
+    wasiyyahTo, wasiyyahAmt, message, messageSpouse, messageChildren, messageFamily,
+    specificGifts, guardianName, guardianPhone, guardianRelation,
+    backupGuardianName, backupGuardianPhone, hasMinors,
+    burialLocation, washBy, janazahLeader, noExpensiveCeremony, funeralNote,
+    dateOfBirth, location, witness1Name, witness1Phone, witness2Name, witness2Phone,
+    executorName, executorPhone, backupExecutorName, backupExecutorPhone,
+    declaration, soundMind, lawyerChoice, lawyerName, lawyerFirm, lawyerPhone, lawyerEmail,
+    haqqLawyerType, haqqLawyerNote, lawyerPaid, isPremium,
+    totalAssets, totalDebts, net, faraid, vaultStatus: status, version,
+    videoVerified: !!videoFile, savedAt: new Date().toISOString(), versions: vers,
+  })
+
+  const saveAll = async () => {
     if (!declaration || !soundMind) { alert('Please confirm both declarations before saving.'); return }
     if (!witness1Name || !witness2Name) { alert('Please add two witnesses.'); return }
     if (lawyerChoice === 'haqq' && !lawyerPaid) { alert('Please pay HAQQ Lawyer Review Fee of ₦25,000, or choose My Own Lawyer / No Lawyer Yet.'); return }
+    setLoadingSave(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push("/login"); return }
     const now = new Date().toISOString()
-    const data = { fullName, myGender, totalAssets, totalDebts, net, wasiyyahAmt, wasiyyahTo, message, messageSpouse, messageChildren, messageFamily, specificGifts, guardianName, guardianPhone, backupGuardianName, burialLocation, washBy, janazahLeader, funeralNote, heirs, witness1Name, witness2Name, executorName, backupExecutorName, location, savedAt: now, videoVerified: !!videoFile, faraid, lawyerChoice, lawyerName, lawyerFirm, lawyerPhone, lawyerEmail, haqqLawyerType, haqqLawyerNote, lawyerPaid, isPremium, vaultStatus: 'ACTIVE_LOCKED', version: 1 }
-    localStorage.setItem('haqq-wasiyyah', JSON.stringify(data))
-    localStorage.setItem('haqq-wasiyyah-status', 'ACTIVE_LOCKED')
-    localStorage.setItem('haqq-wasiyyah-last-saved', now)
     const newVersions = [{ date: now, net, wasiyyahAmt, fullName, editReason: 'First version' }, ...versions].slice(0, 10)
-    setVersions(newVersions); localStorage.setItem('haqq-wasiyyah-versions', JSON.stringify(newVersions))
-    setVaultStatus('ACTIVE_LOCKED'); setLastSaved(now)
+    const data = buildWasiyyahData('ACTIVE_LOCKED', 1, newVersions)
+    const { error } = await supabase.from('wasiyyahs').upsert({ user_id: user.id, data, status: 'ACTIVE_LOCKED', version: 1, updated_at: now }, { onConflict: 'user_id' })
+    setLoadingSave(false)
+    if (error) { alert(error.message); return }
+    setVersions(newVersions); setVaultStatus('ACTIVE_LOCKED'); setLastSaved(now)
     const d = new Date(); d.setMonth(d.getMonth() + 6); setNextReview(d.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }))
-    alert('Your Wasiyyah has been saved securely in your Vault. It is now LOCKED. Only you can unlock it to edit. Your Executor will only access it after death verification.')
+    alert('Your Wasiyyah has been saved securely in your Vault. It is now LOCKED.')
+  }
+
+  const saveAndLockAgain = async () => {
+    setLoadingSave(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push("/login"); return }
+    const now = new Date().toISOString()
+    const newVersion = versions.length + 1
+    const newVersions = [{ date: now, net, wasiyyahAmt, fullName, editReason }, ...versions].slice(0, 10)
+    const data = buildWasiyyahData('ACTIVE_LOCKED', newVersion, newVersions)
+    const { error } = await supabase.from('wasiyyahs').upsert({ user_id: user.id, data, status: 'ACTIVE_LOCKED', version: newVersion, updated_at: now }, { onConflict: 'user_id' })
+    setLoadingSave(false)
+    if (error) { alert(error.message); return }
+    setVersions(newVersions); setVaultStatus('ACTIVE_LOCKED'); setLastSaved(now)
+    alert('Your Wasiyyah has been updated and LOCKED again. New version saved.')
   }
 
   const downloadDraftPDF = () => {
@@ -340,9 +409,6 @@ export default function WasiyyahPage() {
           <p className="text-[11px] text-gray-400 mt-3">Default PIN is 1234 if you never set one.</p>
         </div>
       </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-[#0A1931] text-white pb-[140px]">
       <div className="max-w-[520px] mx-auto px-4 pt-5">
@@ -353,8 +419,6 @@ export default function WasiyyahPage() {
             <a href="/vault" className="bg-white text-[#0A1931] px-4 py-1.5 rounded-full text-sm font-bold">Vault</a>
           </div>
         </div>
-
-        {/* ===== MY WASIYYAH VAULT CARD - MOVED FROM VAULT ===== */}
         <div className="bg-white text-[#0f172a] rounded-[20px] p-5 shadow-xl border-2 border-[#D4AF37]/40 mt-4">
           <div className="flex justify-between items-start gap-3">
             <div>
@@ -389,8 +453,6 @@ export default function WasiyyahPage() {
             </div>
           )}
         </div>
-        {/* ===== END CARD ===== */}
-
         {showImam && (
           <div className="bg-white rounded-[20px] p-4 mt-4 text-black">
             <h3 className="font-extrabold">Ask Imam - On WhatsApp</h3>
@@ -403,12 +465,10 @@ export default function WasiyyahPage() {
               <div className="mt-3">
                 <textarea value={imamQuestion} onChange={(e) => setImamQuestion(e.target.value)} placeholder="Ask your question about Faraid, Wasiyyah, guardianship..." className="w-full p-3 border rounded-xl text-sm outline-none min-h-[70px]" />
                 <button onClick={sendToImamWhatsApp} className="w-full mt-2 bg-green-500 text-white py-3 rounded-full font-bold text-sm">Send To Imam On WhatsApp 💬</button>
-                <p className="text-[11px] text-gray-500 text-center mt-1">This will open WhatsApp directly to the Imam. He will reply you there.</p>
               </div>
             ) : <p className="text-green-600 font-bold text-sm mt-3">✓ Opened WhatsApp to Imam. He will reply you there.</p>}
           </div>
         )}
-
         {vaultStatus === 'ACTIVE_LOCKED' && (
           <div className="bg-white rounded-[20px] p-4 mt-4 text-black text-center">
             <p className="font-extrabold">🔒 Your Wasiyyah Is Locked & Safe In Vault</p>
@@ -436,7 +496,6 @@ export default function WasiyyahPage() {
             <button onClick={() => setStep(1)} className="ml-2 underline font-bold">Update Now</button>
           </div>
         )}
-
         <div className="bg-white rounded-[20px] p-4 mt-4 text-black">
           <div className="flex justify-between">
             <div><p className="text-[11px] font-bold text-gray-500 uppercase">Amount for Faraid</p><p className="text-[20px] font-black">{fmt(faraidPool)}</p></div>
@@ -451,7 +510,6 @@ export default function WasiyyahPage() {
           ))}
         </div>
       </div>
-
       <div className="max-w-[520px] mx-auto px-4 mt-4 space-y-4">
         {step === 1 && (
           <Q title="Step 1 - Declare Your Assets">
@@ -473,7 +531,6 @@ export default function WasiyyahPage() {
             <button onClick={() => setStep(2)} className="w-full mt-4 bg-[#0A1931] text-white py-3.5 rounded-full font-bold">Next - Debts</button>
           </Q>
         )}
-
         {step === 2 && (
           <Q title="Step 2 - Debts and Rights">
             <Label>Loans - Add all loans</Label>
@@ -511,7 +568,6 @@ export default function WasiyyahPage() {
             </div>
           </Q>
         )}
-
         {step === 3 && (
           <Q title="Step 3 - My Family (Faraid)">
             <p className="text-[13px] text-gray-600 mt-1 leading-relaxed">This Wasiyyah is for you. Please select your own gender so your spouse and family shares can be calculated correctly.</p>
@@ -658,7 +714,6 @@ export default function WasiyyahPage() {
             </div>
           </>
         )}
-
         {step === 5 && (
           <>
             <Q title="Step 5 - Video Verification & Legalization">
@@ -738,7 +793,6 @@ export default function WasiyyahPage() {
                 <span className="text-[13px] font-medium leading-relaxed">I confirm that all the information in this Wasiyyah is true and correct, and I want it to be carried out according to Islamic Law after my death.</span>
               </label>
             </Q>
-
             <div className="bg-white rounded-[24px] p-5 text-black">
               <h3 className="font-extrabold">Summary</h3>
               <div className="text-sm space-y-1 mt-2">
@@ -759,24 +813,21 @@ export default function WasiyyahPage() {
                 </div>
               )}
             </div>
-
             <div className="bg-green-50 p-4 rounded-[20px] text-black text-center">
               <p className="font-extrabold">🔒 Your Wasiyyah Will Be Saved Securely In Your Vault</p>
-              <p className="text-[13px] text-gray-600 mt-1 leading-relaxed">It will NOT be downloaded to your phone. It will be stored encrypted in HAQQ Vault. Only your Executor, Witnesses and Lawyer can access it after death verification with a Death Certificate.</p>
+              <p className="text-[13px] text-gray-600 mt-1 leading-relaxed">It will NOT be downloaded to your phone. It will be stored in HAQQ Vault in Supabase. Only your Executor, Witnesses and Lawyer can access it after death verification with a Death Certificate.</p>
               <p className="text-[12px] font-bold mt-2">Status after saving: ACTIVE & LOCKED ✓</p>
             </div>
-
             <div className="flex flex-col gap-3">
               {vaultStatus === 'EDITING' ? (
-                <button onClick={saveAndLockAgain} className="w-full py-3.5 rounded-full bg-yellow-400 text-black font-bold">Save Changes & Lock Again 🔒</button>
+                <button onClick={saveAndLockAgain} disabled={loadingSave} className="w-full py-3.5 rounded-full bg-yellow-400 text-black font-bold disabled:opacity-50">{loadingSave ? 'Saving...' : 'Save Changes & Lock Again 🔒'}</button>
               ) : (
-                <button onClick={saveAll} className="w-full py-3.5 rounded-full bg-black text-white font-bold">Save To My Vault - Lock My Wasiyyah</button>
+                <button onClick={saveAll} disabled={loadingSave} className="w-full py-3.5 rounded-full bg-black text-white font-bold disabled:opacity-50">{loadingSave ? 'Saving...' : 'Save To My Vault - Lock My Wasiyyah'}</button>
               )}
               <button onClick={downloadDraftPDF} className="w-full py-3 rounded-full bg-white text-black font-bold text-sm border">Download DRAFT Copy (With DRAFT Watermark) - For Lawyer Review Only</button>
               <a href="/vault" className="block text-center py-3 rounded-full bg-[#0A1931] text-white font-bold text-sm">View My Vault →</a>
               <button onClick={() => setStep(4)} className="w-full py-3 rounded-full bg-white text-black font-bold">Back</button>
             </div>
-
             <Q title="Notify My Witnesses & Executor">
               <p className="text-[13px] text-gray-600 mt-1">After saving, tap to notify them on WhatsApp so they know they have been named.</p>
               <div className="grid grid-cols-1 gap-2 mt-3">
@@ -790,7 +841,6 @@ export default function WasiyyahPage() {
           </>
         )}
       </div>
-
       {showUnlockModal && vaultStatus === 'ACTIVE_LOCKED' && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-[24px] p-6 w-full max-w-[400px] text-black">
@@ -822,4 +872,4 @@ export default function WasiyyahPage() {
       )}
     </div>
   )
-                }
+                                             }                                                                                                                                                                 }                                                                                                                               }
