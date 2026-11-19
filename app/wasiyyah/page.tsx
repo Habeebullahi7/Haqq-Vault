@@ -283,6 +283,7 @@ export default function WasiyyahPage() {
     if (!editReason.trim()) return alert('Please select why you want to edit.')
     setVaultStatus('EDITING'); setIsLocked(false); setShowUnlockModal(false); setOtpSent(false); setUnlockOtp('')
     alert(`Wasiyyah Unlocked for editing. Reason: ${editReason}. Remember to Save & Lock Again when you finish.`)
+  }
     
   const faraid = useMemo(() => {
     const out: any[] = []
@@ -897,4 +898,4 @@ export default function WasiyyahPage() {
     </div>
   )
   }  
- }
+ 
