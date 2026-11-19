@@ -1,14 +1,10 @@
 // app/vault/page.tsx - Wasiyyah card REMOVED, now only Debts / Haqq
 "use client";
 import { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-type Debt = { id: string; person: string; amount: number; type: 'i_owe' | 'they_owe'; due_date: string; note: string; status: 'pending' | 'paid'; created_at: string; };
+type Debt = { id: string; person: string; amount: number; type: 'i_owe' | 'they_owe'; due_date: string; note: string; status: 'pending' | 'paid'; created_at: string; user_id: string };
 
 const hadiths = [
   { arabic:"خَيْرُكُمْ مَنْ تَعَلَّمَ الْقُرْآنَ وَعَلَّمَهُ", trans:"The best of you are those who learn Quran and teach it.", ref:"Bukhari" },
@@ -24,6 +20,7 @@ export default function VaultPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [newDebt, setNewDebt] = useState({ person: '', amount: '', type: 'i_owe', due_date: '', note: '', customNote: '' });
   const [hadith, setHadith] = useState(hadiths[0]);
+  const router = useRouter();
 
   useEffect(() => {
     fetchDebts();
@@ -41,7 +38,10 @@ export default function VaultPage() {
   }, []);
 
   async function fetchDebts() {
-    const { data } = await supabase.from('debts').select('*').order('created_at', { ascending: false });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { router.push("/login"); return; }
+    // FIX: Only fetch MY debts, no be everybody own
+    const { data } = await supabase.from('debts').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
     if (data) setDebts(data as any);
   }
 
@@ -50,7 +50,9 @@ export default function VaultPage() {
     if (newDebt.note === "Other - Custom" && !newDebt.customNote) { alert("Please type your custom Haqq in the box"); return; }
     const finalNote = newDebt.note === "Other - Custom" ? newDebt.customNote : newDebt.note + (newDebt.customNote ? ` - ${newDebt.customNote}` : '');
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from('debts').insert([{ person: newDebt.person, amount: Number(newDebt.amount) || 0, type: newDebt.type, due_date: newDebt.due_date || null, note: finalNote, status: 'pending', user_id: user?.id || null }]);
+    if (!user) { router.push("/login"); return; }
+    const { error } = await supabase.from('debts').insert([{ person: newDebt.person, amount: Number(newDebt.amount) || 0, type: newDebt.type, due_date: newDebt.due_date || null, note: finalNote, status: 'pending', user_id: user.id }]);
+    if (error) { alert(error.message); return; }
     setShowAdd(false);
     setNewDebt({ person: '', amount: '', type: 'i_owe', due_date: '', note: '', customNote: '' });
     fetchDebts();
@@ -58,6 +60,12 @@ export default function VaultPage() {
 
   async function markPaid(id: string) {
     await supabase.from('debts').update({ status: 'paid' }).eq('id', id);
+    fetchDebts();
+  }
+
+  async function deleteDebt(id: string) {
+    if (!confirm("Delete this Haqq? You no fit undo am.")) return;
+    await supabase.from('debts').delete().eq('id', id);
     fetchDebts();
   }
 
@@ -72,7 +80,6 @@ export default function VaultPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6 space-y-6">
-        {/* LINK TO WASIYYAH - Replaces big card. Card now lives on /wasiyyah */}
         <a href="/wasiyyah" className="block bg-white text-[#0f172a] rounded-[20px] p-5 shadow-xl border-2 border-[#D4AF37]/40 no-underline">
           <div className="flex justify-between items-center">
             <div>
@@ -125,6 +132,7 @@ export default function VaultPage() {
                     <p className={`font-extrabold ${d.type === 'i_owe' ? 'text-red-600' : 'text-green-700'}`}>₦{d.amount.toLocaleString()}</p>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">{d.status}</span>
                     {d.status === 'pending' && <button onClick={() => markPaid(d.id)} className="block text-[10px] bg-green-600 text-white px-2 py-1 rounded-full mt-1 font-bold ml-auto">Mark Paid ✓</button>}
+                    <button onClick={() => deleteDebt(d.id)} className="block text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded-full mt-1 font-bold ml-auto">Delete ✕</button>
                   </div>
                 </div>
               ))}
@@ -208,4 +216,4 @@ export default function VaultPage() {
       )}
     </div>
   )
-                      }
+                }
