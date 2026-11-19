@@ -19,8 +19,6 @@ export default function LawyerPage() {
 
   const login = () => {
     const key = code.trim().toUpperCase()
-    // Allow Yusuf01 / Yusuf01 case-insensitive
-    const found = LAWYER_CODES[key] || Object.values(LAWYER_CODES).find((v: any) => v.name)
     const entry = LAWYER_CODES[key]
     if (entry) {
       setLawyerName(entry.name); setMyLawyerId(entry.id); setLoggedIn(true); fetchAssigned(entry.id)
@@ -43,6 +41,9 @@ export default function LawyerPage() {
 
   async function markReviewed(id: string) {
     if (!confirm('Mark this Wasiyyah as Reviewed & Approved?')) return
+    const { data: row } = await supabase.from('wasiyyahs').select('data').eq('id', id).single()
+    const newData = { ...(row?.data || {}), lawyerApproved: true, lawyerApprovedBy: lawyerName, lawyerApprovedAt: new Date().toISOString() }
+    await supabase.from('wasiyyahs').update({ data: newData }).eq('id', id)
     alert('Approved! Your name will appear on the Final PDF.')
     fetchAssigned(myLawyerId)
   }
@@ -83,6 +84,8 @@ export default function LawyerPage() {
                 <div className="flex justify-between"><h3 className="font-extrabold">{d.fullName || 'No Name'}</h3><span className="text-[11px] bg-yellow-100 px-2 py-1 rounded-full font-bold">{w.status}</span></div>
                 <p className="text-sm text-gray-600 mt-1">{d.location || '-'} • Net: ₦{(d.net || 0).toLocaleString()} • {new Date(w.updated_at).toLocaleDateString('en-NG')}</p>
                 <p className="text-[12px] text-gray-500">HAQQ Lawyer - {d.haqqLawyerType} • Paid ✓ • Version {w.version}</p>
+                {d.selectedLawyerName && <p className="text-[12px] font-bold text-green-700">Assigned to: {d.selectedLawyerName}</p>}
+                {d.lawyerApproved && <p className="text-[12px] font-bold text-green-600 mt-1">✓ Approved by {d.lawyerApprovedBy}</p>}
                 <p className="text-[12px] text-gray-600 mt-2">Executor: {d.executorName} ({d.executorPhone}) • Witnesses: {d.witness1Name}, {d.witness2Name}</p>
                 {d.haqqLawyerNote && <p className="text-[12px] bg-blue-50 p-2 rounded-lg mt-2">Client Note: {d.haqqLawyerNote}</p>}
                 <div className="flex gap-2 mt-3">
