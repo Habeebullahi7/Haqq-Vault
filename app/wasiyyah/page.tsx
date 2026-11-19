@@ -347,6 +347,8 @@ export default function WasiyyahPage() {
     executorName, executorPhone, backupExecutorName, backupExecutorPhone,
     declaration, soundMind, lawyerChoice, lawyerName, lawyerFirm, lawyerPhone, lawyerEmail,
     haqqLawyerType, haqqLawyerNote, lawyerPaid, isPremium,
+    selectedLawyerId,
+    selectedLawyerName: HAQQ_LAWYERS.find(x => x.id === selectedLawyerId)?.name || '',
     totalAssets, totalDebts, net, faraid, vaultStatus: status, version,
     videoVerified: !!videoFile, savedAt: new Date().toISOString(), versions: vers,
   })
