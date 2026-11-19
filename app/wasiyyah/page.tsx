@@ -443,7 +443,7 @@ export default function WasiyyahPage() {
             <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">NET ESTATE</p><p className="font-extrabold">{fmt(net)}</p></div>
             <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">WASIYYAH (1/3)</p><p className="font-extrabold">{fmt(num(wasiyyahAmt))}</p></div>
             <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">EXECUTOR</p><p className="font-bold truncate">{executorName || '-'}</p></div>
-            <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">LAWYER</p><p className="font-bold truncate">{lawyerChoice === 'haqq' ? 'HAQQ Lawyer' : selectedlawyerName || 'No Lawyer Yet'}</p></div>
+            <div className="bg-gray-50 p-3 rounded-xl"><p className="text-[11px] text-gray-500">LAWYER</p><p className="font-bold truncate">{lawyerChoice === 'haqq' ? 'HAQQ Lawyer' : lawyerName || 'No Lawyer Yet'}</p></div>
           </div>
           <p className="text-[11px] text-gray-500 mt-3 bg-yellow-50 p-3 rounded-xl leading-relaxed">
             🔒 Locked: Only you can unlock to edit (PIN + OTP). Executor / Lawyer can only access after death verification.
