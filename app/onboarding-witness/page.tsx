@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
@@ -9,6 +9,20 @@ export default function WitnessPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const router = useRouter();
+
+  // Load old witnesses if e don save before — make e no duplicate
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/login"); return; }
+      const { data } = await supabase.from('witnesses').select('*').eq('user_id', user.id).order('created_at');
+      if (data && data.length >= 2) {
+        setW1({ name: data[0].name, phone: data[0].phone, relationship: data[0].relationship });
+        setW2({ name: data[1].name, phone: data[1].phone, relationship: data[1].relationship });
+      }
+    }
+    load();
+  }, []);
 
   async function save() {
     setErrorMsg("");
@@ -22,12 +36,18 @@ export default function WitnessPage() {
       router.push("/login");
       return;
     }
+
+    // 1. Delete old witnesses first — so e no duplicate
+    await supabase.from('witnesses').delete().eq('user_id', user.id);
+
+    // 2. Insert fresh 2 witnesses
     const { error } = await supabase.from('witnesses').insert([
       { user_id: user.id, name: w1.name.trim(), phone: w1.phone.trim(), relationship: w1.relationship },
       { user_id: user.id, name: w2.name.trim(), phone: w2.phone.trim(), relationship: w2.relationship },
     ]);
     setLoading(false);
     if (error) {
+      console.log(error);
       setErrorMsg("Could not save witnesses. Please try again.");
       return;
     }
