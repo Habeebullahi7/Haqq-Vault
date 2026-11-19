@@ -5,6 +5,11 @@ import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 
 const IMAM_WHATSAPP = '2348161866717'
+const HAQQ_LAWYERS = [
+  { id: 'lawyer-yusuf', name: 'Barr. Yusuf Emiola', specialty: 'Sharia Court Lawyer', city: 'Lagos', phone: '2348171997051', code: 'Yusuf01' },
+  { id: 'lawyer-akanbi', name: 'Barr. Akanbi', specialty: 'Islamic Estate Lawyer', city: 'Ibadan', phone: '2348163528607', code: 'Akanbi02' },
+  { id: 'lawyer-habeeb', name: 'Barr. Habeeb', specialty: 'Sharia Court Lawyer', city: 'Kano', phone: '2348169894541', code: 'Habeeb03' },
+]
 
 const WORD_NUMBERS: any = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100, thousand: 1000, million: 1000000, billion: 1000000000 }
 function parseWordNumber(text: string): number {
@@ -170,6 +175,7 @@ export default function WasiyyahPage() {
   const [haqqLawyerNote, setHaqqLawyerNote] = useState('')
   const [lawyerPaid, setLawyerPaid] = useState(false)
   const [isPremium, setIsPremium] = useState(false)
+  const [selectedLawyerId, setSelectedLawyerId] = useState('')
 
   // ASK IMAM
   const [imamQuestion, setImamQuestion] = useState('')
@@ -763,20 +769,34 @@ export default function WasiyyahPage() {
                 </div>
               )}
               {lawyerChoice === 'haqq' && (
-                <div className="mt-3 bg-blue-50 p-3 rounded-xl">
-                  <p className="text-[13px] font-bold text-black">HAQQ Partner Lawyer - Review Fee: ₦25,000</p>
-                  <p className="text-[12px] text-gray-600 mt-1">We will connect you with a verified partner lawyer in your state.</p>
-                  <div className="mt-3">
-                    <select value={haqqLawyerType} onChange={(e) => setHaqqLawyerType(e.target.value)} className="w-full p-3 bg-white rounded-xl border text-black text-sm font-medium outline-none">
-                      <option>Sharia Court Lawyer</option>
-                      <option>Islamic Estate Lawyer</option>
-                      <option>Notary / General Lawyer</option>
-                    </select>
-                  </div>
-                  <div className="mt-2"><textarea value={haqqLawyerNote} onChange={(e) => setHaqqLawyerNote(e.target.value)} placeholder="Any note for the lawyer? e.g. I am in Kano..." className="w-full p-3 bg-white rounded-xl border text-black placeholder:text-gray-400 text-sm outline-none min-h-[70px]" /></div>
-                  {!lawyerPaid ? <button onClick={() => { setLawyerPaid(true); alert('Payment successful! HAQQ Lawyer will contact you within 24 hours.') }} className="w-full mt-2 bg-green-600 text-white py-3 rounded-full font-bold text-sm">Pay ₦25,000 - HAQQ Lawyer Review</button> : <p className="text-green-600 font-bold text-sm mt-2 text-center">✓ Paid - Lawyer will contact you within 24 hours</p>}
-                </div>
-              )}
+               lawyerChoice === 'haqq' && (
+  <div className="mt-3 space-y-2">
+    <p className="text-[13px] font-bold text-black">Choose Your HAQQ Lawyer — ₦25,000</p>
+    <p className="text-[12px] text-gray-600">Tap one lawyer. That lawyer go get notification immediately after you pay.</p>
+    {HAQQ_LAWYERS.map((l) => (
+      <button key={l.id} type="button" onClick={() => setSelectedLawyerId(l.id)}
+        className={`w-full text-left p-3 rounded-xl border-2 ${selectedLawyerId === l.id ? 'border-black bg-yellow-50' : 'border-gray-200 bg-white'}`}>
+        <p className="font-bold text-sm text-black">{l.name} {selectedLawyerId === l.id ? '✓ Selected' : ''}</p>
+        <p className="text-[12px] text-gray-600">{l.specialty} • {l.city}</p>
+        <p className="text-[12px] font-bold text-black">Fee: ₦25,000</p>
+      </button>
+    ))}
+    <textarea value={haqqLawyerNote} onChange={(e) => setHaqqLawyerNote(e.target.value)} placeholder="Any note for the lawyer? e.g. I am in Kano..." className="w-full p-3 bg-white rounded-xl border text-black placeholder:text-gray-400 text-sm outline-none min-h-[70px]" />
+    {!lawyerPaid ? (
+      <button onClick={() => {
+        if (!selectedLawyerId) return alert('Please select one lawyer first.')
+        setLawyerPaid(true)
+        const lawyer = HAQQ_LAWYERS.find(x => x.id === selectedLawyerId)
+        const text = `Assalamu Alaikum ${lawyer?.name},\n\nNEW WASIYYAH ASSIGNED TO YOU ON HAQQ!\n\nClient: ${fullName || 'HAQQ User'}\nNet Estate: ${fmt(net)}\nCity: ${location || '-'}\nNote: ${haqqLawyerNote || 'No note'}\n\nPlease login to HAQQ Lawyer page with your code ${lawyer?.code} to review and start legal processing. Jazakum Allahu Khairan.`
+        window.open(`https://wa.me/${lawyer?.phone}?text=${encodeURIComponent(text)}`, '_blank')
+        alert(`Payment successful! ${lawyer?.name} don get notification on WhatsApp.`)
+      }} className="w-full mt-2 bg-green-600 text-white py-3 rounded-full font-bold text-sm">
+        Pay ₦25,000 - Notify {HAQQ_LAWYERS.find(x => x.id === selectedLawyerId)?.name || 'Lawyer'}
+      </button>
+    ) : <p className="text-green-600 font-bold text-sm mt-2 text-center">✓ Paid - {HAQQ_LAWYERS.find(x => x.id === selectedLawyerId)?.name} will contact you within 24 hours</p>}
+  </div>
+)
+            }
               {lawyerChoice === 'none' && <p className="text-[12px] text-gray-500 mt-2">You can still save to Vault and take DRAFT to any lawyer later.</p>}
               <Label>Premium PDF - With HAQQ Seal</Label>
               <div className="flex justify-between items-center bg-yellow-50 p-3 rounded-xl">
