@@ -773,7 +773,7 @@ export default function WasiyyahPage() {
                 </div>
               )}
               {lawyerChoice === 'haqq' && (
-               lawyerChoice === 'haqq' && (
+            
   <div className="mt-3 space-y-2">
     <p className="text-[13px] font-bold text-black">Choose Your HAQQ Lawyer — ₦25,000</p>
     <p className="text-[12px] text-gray-600">Tap one lawyer. That lawyer go get notification immediately after you pay.</p>
