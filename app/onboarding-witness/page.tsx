@@ -10,7 +10,6 @@ export default function WitnessPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const router = useRouter();
 
-  // Load old witnesses if e don save before — make e no duplicate
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -24,13 +23,17 @@ export default function WitnessPage() {
     load();
   }, []);
 
+  function makeToken() {
+    // Simple random token
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+  }
+
   async function save() {
     setErrorMsg("");
     if (!w1.name.trim() || !w1.phone.trim() || !w1.email.trim() || !w2.name.trim() || !w2.phone.trim() || !w2.email.trim()) {
       setErrorMsg("Please add 2 witnesses with name, phone and email. This is for your safety.");
       return;
     }
-    // Simple email check
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(w1.email.trim()) || !emailRegex.test(w2.email.trim())) {
       setErrorMsg("Please enter a valid email for both witnesses.");
@@ -43,20 +46,42 @@ export default function WitnessPage() {
       return;
     }
 
-    // 1. Delete old witnesses first — so e no duplicate
+    // Get owner name - from user metadata or email
+    const owner_name = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "Your loved one";
+
+    const token1 = makeToken();
+    const token2 = makeToken();
+
+    // 1. Delete old witnesses first
     await supabase.from('witnesses').delete().eq('user_id', user.id);
 
-    // 2. Insert fresh 2 witnesses
+    // 2. Insert fresh 2 witnesses with token + email
     const { error } = await supabase.from('witnesses').insert([
-      { user_id: user.id, name: w1.name.trim(), phone: w1.phone.trim(), email: w1.email.trim().toLowerCase(), relationship: w1.relationship },
-      { user_id: user.id, name: w2.name.trim(), phone: w2.phone.trim(), email: w2.email.trim().toLowerCase(), relationship: w2.relationship },
+      { user_id: user.id, name: w1.name.trim(), phone: w1.phone.trim(), email: w1.email.trim().toLowerCase(), relationship: w1.relationship, token: token1, confirmed: false },
+      { user_id: user.id, name: w2.name.trim(), phone: w2.phone.trim(), email: w2.email.trim().toLowerCase(), relationship: w2.relationship, token: token2, confirmed: false },
     ]);
-    setLoading(false);
+
     if (error) {
       console.log(error);
+      setLoading(false);
       setErrorMsg("Could not save witnesses. Please try again.");
       return;
     }
+
+    // 3. Send email to both witnesses via notify-witness function
+    try {
+      await supabase.functions.invoke('notify-witness', {
+        body: { witness_email: w1.email.trim().toLowerCase(), witness_name: w1.name.trim(), owner_name, token: token1 }
+      });
+      await supabase.functions.invoke('notify-witness', {
+        body: { witness_email: w2.email.trim().toLowerCase(), witness_name: w2.name.trim(), owner_name, token: token2 }
+      });
+    } catch (e) {
+      console.log("Email send error:", e);
+      // No block user even if email fail - witnesses don save already
+    }
+
+    setLoading(false);
     router.push("/home");
   }
 
@@ -73,18 +98,18 @@ export default function WitnessPage() {
           <p className="font-bold">Witness 1</p>
           <input value={w1.name} onChange={e=>setW1({...w1, name: e.target.value})} placeholder="Full Name" className={inputClass} />
           <input value={w1.phone} onChange={e=>setW1({...w1, phone: e.target.value})} placeholder="Phone e.g +234..." className={inputClass} />
-          <input value={w1.email} onChange={e=>setW1({...w1, email: e.target.value})} placeholder="Email e.g liasuhabeeb@gmail.com" type="email" className={inputClass} />
+          <input value={w1.email} onChange={e=>setW1({...w1, email: e.target.value})} placeholder="Email e.g zamaritech@gmail.com" type="email" className={inputClass} />
           <select value={w1.relationship} onChange={e=>setW1({...w1, relationship: e.target.value})} className={selectClass}>
             <option>Wife</option><option>Husband</option><option>Brother</option><option>Sister</option><option>Father</option><option>Mother</option><option>Imam</option><option>Friend</option>
           </select>
           <p className="font-bold pt-2">Witness 2</p>
           <input value={w2.name} onChange={e=>setW2({...w2, name: e.target.value})} placeholder="Full Name" className={inputClass} />
           <input value={w2.phone} onChange={e=>setW2({...w2, phone: e.target.value})} placeholder="Phone e.g +234..." className={inputClass} />
-          <input value={w2.email} onChange={e=>setW2({...w2, email: e.target.value})} placeholder="Email e.g zamaritech@gmail.com" type="email" className={inputClass} />
+          <input value={w2.email} onChange={e=>setW2({...w2, email: e.target.value})} placeholder="Email e.g liasuhabeeb@gmail.com" type="email" className={inputClass} />
           <select value={w2.relationship} onChange={e=>setW2({...w2, relationship: e.target.value})} className={selectClass}>
             <option>Brother</option><option>Sister</option><option>Wife</option><option>Husband</option><option>Father</option><option>Mother</option><option>Imam</option><option>Friend</option>
           </select>
-          <button onClick={save} disabled={loading} className="w-full bg-[#0f172a] text-white py-3.5 rounded-full font-bold disabled:opacity-50">{loading ? "Saving..." : "Save & Continue →"}</button>
+          <button onClick={save} disabled={loading} className="w-full bg-[#0f172a] text-white py-3.5 rounded-full font-bold disabled:opacity-50">{loading ? "Sending invites..." : "Save & Continue →"}</button>
         </div>
       </div>
     </div>
