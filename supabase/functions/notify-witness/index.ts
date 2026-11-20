@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -10,15 +11,12 @@ serve(async (req) => {
     const url = Deno.env.get("supabase_url") || Deno.env.get("SUPABASE_URL")!
     const serviceKey = Deno.env.get("supabase_service_role_key") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     const supabase = createClient(url, serviceKey)
-
     const { data: w } = await supabase.from("witnesses").select("*").eq("id", witness_id).single()
     if (!w) return new Response(JSON.stringify({error:"witness not found"}), {status:404, headers:cors})
-
     const { data: p } = await supabase.from("profiles").select("full_name").eq("id", w.user_id).single()
     const userName = p?.full_name || "A HAQQ user"
     const site = Deno.env.get("site_url") || ""
     const confirmLink = `${site}/confirm-witness?token=${w.invite_token}`
-
     await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${Deno.env.get("resend_api_key")}`, "Content-Type": "application/json" },
