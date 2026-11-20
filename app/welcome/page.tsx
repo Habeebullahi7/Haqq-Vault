@@ -11,21 +11,48 @@ export default function WelcomePage() {
         <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-[#D4AF37] text-[#0A1931] flex items-center justify-center font-extrabold">H</div><span className="font-bold tracking-[0.2em] text-sm">HAQQ</span></div>
         <div className="hidden md:flex items-center gap-8 text-sm text-gray-300">
           <a href="#how">How it Works</a>
-          <a href="/account" className="bg-[#D4AF37] text-[#0A1931] px-6 py-2.5 rounded-full font-bold">Open Vault</a>
+          <a href="/vault" className="bg-[#D4AF37] text-[#0A1931] px-6 py-2.5 rounded-full font-bold">Open Vault</a>
         </div>
-        <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden"><div className="space-y-1.5"><div className="w-6 h-0.5 bg-white"></div><div className="w-6 h-0.5 bg-white"></div><div className="w-6 h-0.5 bg-[#D4AF37]"></div></div></button>
+        <button onClick={() => setMenuOpen(!menuOpen)} aria-label="Open menu" className="md:hidden"><div className="space-y-1.5"><div className="w-6 h-0.5 bg-white"></div><div className="w-6 h-0.5 bg-white"></div><div className="w-6 h-0.5 bg-[#D4AF37]"></div></div></button>
       </nav>
-      {menuOpen && (<div className="relative z-20 md:hidden bg-[#0A1931] border-y border-[#D4AF37]/10 px-6 py-6 space-y-4"><a href="#how" onClick={()=>setMenuOpen(false)} className="block py-2 text-gray-300">How it Works</a><a href="/account" className="block mt-4 bg-[#D4AF37] text-[#0A1931] text-center py-3.5 rounded-xl font-bold">Open Vault 🔒</a></div>)}
+      {menuOpen && (<div className="relative z-20 md:hidden bg-[#0A1931] border-y border-[#D4AF37]/10 px-6 py-6 space-y-4"><a href="#how" onClick={()=>setMenuOpen(false)} className="block py-2 text-gray-300">How it Works</a><a href="/vault" className="block mt-4 bg-[#D4AF37] text-[#0A1931] text-center py-3.5 rounded-xl font-bold">Open Vault 🔒</a></div>)}
       <section className="relative z-10 max-w-6xl mx-auto px-6 pt-12 pb-20 text-center">
         <div className="inline-flex items-center gap-2 bg-white/5 border border-[#D4AF37]/30 rounded-full px-4 py-1.5 text-[11px] tracking-widest text-[#D4AF37]"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> QURAN 2:282 • BUILT FOR AMANAH</div>
-        <h1 className="mt-8 text-5xl md:text-7xl font-extrabold leading-[0.9]">Never Forget <br /> <span className="text-[#D4AF37]">A Haqq.</span> 🔒</h1>
+        <h1 className="mt-8 text-5xl md:text-7xl font-extrabold leading-[0.9]">Never Forget <br /> <span className="text-[#D4AF37]">a Haqq.</span> 🔒</h1>
         <p className="mt-6 text-[#E8EDF5]/70 max-w-xl mx-auto leading-relaxed">Your private Islamic debt vault. Record who you owe, who owes you, set reminders, and keep your trust with Allah.</p>
         <div className="mt-9 flex flex-col sm:flex-row justify-center gap-3">
-          <a href="/account" className="px-8 py-4 bg-[#D4AF37] text-[#0A1931] rounded-full font-bold">Enter Vault — It's Free</a>
+          <a href="/vault" className="px-8 py-4 bg-[#D4AF37] text-[#0A1931] rounded-full font-bold">Enter Vault — It&apos;s Free</a>
           <a href="#how" className="px-8 py-4 bg-white/10 border border-white/10 rounded-full font-semibold">How it Works</a>
         </div>
       </section>
-      <footer className="text-center py-8 text-xs text-[#E8EDF5]/50">Built for Amanah • Quran 2:282 • <a href="/account" className="text-[#D4AF37] font-bold underline">Open Vault</a></footer>
+
+      {/* HOW IT WORKS - This was missing, now #how works */}
+      <section id="how" className="relative z-10 max-w-6xl mx-auto px-6 pb-20">
+        <h2 className="text-center text-2xl font-bold">How it Works</h2>
+        <p className="text-center text-sm text-white/60 mt-2">Three steps to keep your Amanah clear.</p>
+        <div className="grid md:grid-cols-3 gap-4 mt-8">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+            <p className="text-3xl">✍️</p>
+            <h3 className="font-bold mt-3">1. Record it</h3>
+            <p className="text-sm text-white/60 mt-1">Record who you owe or who owes you — money, Ghibah, broken promise, or any Haqq.</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+            <p className="text-3xl">🌙</p>
+            <h3 className="font-bold mt-3">2. Check yourself nightly</h3>
+            <p className="text-sm text-white/60 mt-1">Do your daily Muhasabah at 9pm. Ask yourself the 5 questions before you sleep.</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+            <p className="text-3xl">✅</p>
+            <h3 className="font-bold mt-3">3. Clear it</h3>
+            <p className="text-sm text-white/60 mt-1">Pay it, apologise, or write your Wasiyyah. Mark it as paid and keep your heart clear.</p>
+          </div>
+        </div>
+        <div className="text-center mt-8">
+          <a href="/vault" className="inline-block px-8 py-4 bg-[#D4AF37] text-[#0A1931] rounded-full font-bold">Start Now — It&apos;s Free</a>
+        </div>
+      </section>
+
+      <footer className="text-center py-8 text-xs text-[#E8EDF5]/50">Built for Amanah • Quran 2:282 • <a href="/vault" className="text-[#D4AF37] font-bold underline">Open Vault</a></footer>
     </div>
   )
-}
+      }
