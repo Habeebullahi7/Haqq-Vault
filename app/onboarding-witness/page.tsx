@@ -73,14 +73,14 @@ export default function WitnessPage() {
           <p className="font-bold">Witness 1</p>
           <input value={w1.name} onChange={e=>setW1({...w1, name: e.target.value})} placeholder="Full Name" className={inputClass} />
           <input value={w1.phone} onChange={e=>setW1({...w1, phone: e.target.value})} placeholder="Phone e.g +234..." className={inputClass} />
-          <input value={w1.email} onChange={e=>setW1({...w1, email: e.target.value})} placeholder="Email e.g ibrahim@gmail.com" type="email" className={inputClass} />
+          <input value={w1.email} onChange={e=>setW1({...w1, email: e.target.value})} placeholder="Email e.g liasuhabeeb@gmail.com" type="email" className={inputClass} />
           <select value={w1.relationship} onChange={e=>setW1({...w1, relationship: e.target.value})} className={selectClass}>
             <option>Wife</option><option>Husband</option><option>Brother</option><option>Sister</option><option>Father</option><option>Mother</option><option>Imam</option><option>Friend</option>
           </select>
           <p className="font-bold pt-2">Witness 2</p>
           <input value={w2.name} onChange={e=>setW2({...w2, name: e.target.value})} placeholder="Full Name" className={inputClass} />
           <input value={w2.phone} onChange={e=>setW2({...w2, phone: e.target.value})} placeholder="Phone e.g +234..." className={inputClass} />
-          <input value={w2.email} onChange={e=>setW2({...w2, email: e.target.value})} placeholder="Email e.g brother@gmail.com" type="email" className={inputClass} />
+          <input value={w2.email} onChange={e=>setW2({...w2, email: e.target.value})} placeholder="Email e.g zamaritech@gmail.com" type="email" className={inputClass} />
           <select value={w2.relationship} onChange={e=>setW2({...w2, relationship: e.target.value})} className={selectClass}>
             <option>Brother</option><option>Sister</option><option>Wife</option><option>Husband</option><option>Father</option><option>Mother</option><option>Imam</option><option>Friend</option>
           </select>
