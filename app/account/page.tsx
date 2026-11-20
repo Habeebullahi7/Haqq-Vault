@@ -2,13 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import BottomNav from "../../components/BottomNav";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export default function AccountPage() {
   const router = useRouter();
@@ -19,6 +14,8 @@ export default function AccountPage() {
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [streak, setStreak] = useState(0);
 
   useEffect(()=>{
@@ -32,16 +29,24 @@ export default function AccountPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError("");
+    setNotice("");
     try {
       if (mode === "signup") {
         if (!name.trim()) throw new Error("Please enter your name");
-        const { error } = await supabase.auth.signUp({
+        if (password.length < 6) throw new Error("Password must be at least 6 characters");
+        const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: { data: { full_name: name.trim() } }
         });
         if (error) throw error;
-        await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        // If Supabase requires email confirmation, session will be null
+        if(!data.session){
+          setNotice("Account created! Check your email to confirm, then come back to log in.");
+          setMode("login");
+          return;
+        }
         router.push("/vault");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -52,7 +57,7 @@ export default function AccountPage() {
         router.push("/vault");
       }
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message || "Something went wrong. Try again.");
     } finally {
       setLoading(false);
     }
@@ -67,28 +72,30 @@ export default function AccountPage() {
     return <div className="min-h-screen flex items-center justify-center bg-[#0A1931] text-white">Loading...</div>
   }
 
-  // NOT LOGGED IN - SHOW YOUR ORIGINAL LOGIN
+  // NOT LOGGED IN
   if(!user){
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f6f7f9] px-4">
         <div className="w-full max-w-md bg-white rounded-[20px] shadow p-8">
           <h1 className="text-2xl font-bold text-center">Welcome to HAQQ</h1>
-          <p className="text-center text-gray-500 text-sm mb-6">Your email unlocks your encrypted vault.</p>
+          <p className="text-center text-gray-500 text-sm mb-6">Your private Vault — only you can see it after you log in.</p>
+          {error && <p className="bg-red-50 text-red-600 text-sm p-3 rounded-xl mb-3">{error}</p>}
+          {notice && <p className="bg-green-50 text-green-700 text-sm p-3 rounded-xl mb-3">{notice}</p>}
           <form onSubmit={handleSubmit} className="space-y-3">
             {mode === "signup" && (
               <input required placeholder="Your Name e.g. Habeeb" value={name} onChange={e=>setName(e.target.value)} className="w-full px-4 py-3 rounded-xl border" />
             )}
             <input required type="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border" />
-            <input required type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl border" />
-            <button disabled={loading} className="w-full py-3 rounded-xl bg-slate-800 text-white font-bold">{loading ? "..." : mode==="login" ? "Login" : "Create Account"}</button>
+            <input required type="password" placeholder="Password (min 6 characters)" value={password} onChange={e=>setPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl border" />
+            <button disabled={loading} className="w-full py-3 rounded-xl bg-slate-800 text-white font-bold">{loading ? "Please wait..." : mode==="login" ? "Login" : "Create Account"}</button>
           </form>
-          <button onClick={()=>setMode(mode==="login"?"signup":"login")} className="w-full mt-4 text-sm text-gray-600">{mode==="login" ? "Create New Account" : "Already have account? Login"}</button>
+          <button onClick={()=>{setMode(mode==="login"?"signup":"login"); setError(""); setNotice("")}} className="w-full mt-4 text-sm text-gray-600">{mode==="login" ? "Create a New Account" : "Already have an account? Login"}</button>
         </div>
       </div>
     );
   }
 
-  // LOGGED IN - SHOW HUB THAT CONNECTS EVERYTHING
+  // LOGGED IN - HUB
   const links = [
     { href:"/tracker", title:"Barakah Tracker", desc:`🔥 ${streak} days • Your Sadaqah dashboard`, icon:"📊", color:"bg-white text-black" },
     { href:"/kaffarah", title:"Kaffarah & Forgiveness", desc:"Oath, fasting, apology letter", icon:"🤲", color:"bg-[#D4AF37] text-black" },
@@ -130,4 +137,4 @@ export default function AccountPage() {
       <BottomNav />
     </div>
   )
-}
+              }
